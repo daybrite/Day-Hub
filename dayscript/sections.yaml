@@ -1,0 +1,15 @@
+# Synthetic account fixture. Collapsing a section preserves the selected detail route.
+flow:
+  - wait_for: { id: nav-sections }
+  - wait_for: { id: "sidebar:header:owner:fixture-org" }
+  - navigate: { route: "repo:fixture-org~day" }
+  - expand: { id: nav-sections, row: "sidebar:header:owner:fixture-org", expanded: false }
+  - assert_missing: { id: "sidebar:item:repo:fixture-org~day" }
+  - assert_route: { route: "repo:fixture-org~day/overview" }
+  - wait_for: { id: repository-title }
+  - expand: { id: nav-sections, row: "sidebar:header:owner:fixture-org", expanded: true }
+  - wait_for: { id: "sidebar:item:repo:fixture-org~day" }
+  - expand: { id: nav-sections, row: "sidebar:header:favorites", expanded: false }
+  - assert_missing: { id: "sidebar:item:favorite:fixture-org~day" }
+  - expand: { id: nav-sections, row: "sidebar:header:favorites", expanded: true }
+  - screenshot: { name: repository-sections }

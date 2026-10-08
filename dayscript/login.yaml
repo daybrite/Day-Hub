@@ -1,0 +1,17 @@
+# Live device-grant initiation, for a signed-out account. Opens the system browser but cancels
+# before any authorization is completed; never logs or persists a token.
+flow:
+  - wait_for: { id: github-sign-in }
+  - tap: { id: github-sign-in }
+  - wait_for: { id: github-device-code, timeout_secs: 30 }
+  - assert_visible: { id: github-copy-code-open }
+  - assert_text: { id: github-copy-status, text: "" }
+  - screenshot: { name: device-code-before-browser }
+  - tap: { id: github-copy-code-open }
+  - assert_text: { id: github-copy-status, key: login_code_copied }
+  - pause: { secs: 6 }
+  - assert_visible: { id: github-device-code }
+  - assert_visible: { id: cancel-login }
+  - screenshot: { name: device-login }
+  - tap: { id: cancel-login }
+  - assert_missing: { id: github-device-code }

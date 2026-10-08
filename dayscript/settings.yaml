@@ -1,0 +1,21 @@
+# Run with DAY_HUB_FIXTURE=1. Invalid drafts must not overwrite saved preferences.
+flow:
+  - wait_for: { id: hub-nav }
+  - navigate: { route: settings }
+  - wait_for: { id: monitor-rows }
+  - input: { id: interval, text: "0" }
+  - scroll_to: { id: save }
+  - tap: { id: save }
+  - assert_text: { id: settings-message, key: invalid_settings }
+  - input: { id: interval, text: "60" }
+  - input: { id: grid-rows, text: "7" }
+  - scroll_to: { id: save }
+  - tap: { id: save }
+  - assert_text: { id: settings-message, key: invalid_grid }
+  - screenshot: { name: validation }
+  - navigate: { route: account }
+  - menu: { key: day-preferences }
+  - wait_for: { id: monitor-rows }
+  - scroll_to: { id: grid-preview }
+  - assert_visible: { id: grid-preview }
+  - screenshot: { name: grid-settings }

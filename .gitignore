@@ -1,0 +1,8 @@
+/target/
+/build/
+/.day/
+/.cargo/config.toml
+xcuserdata/
+DerivedData/
+platform/*/DayApp.local.xcconfig
+.DS_Store

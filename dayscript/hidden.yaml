@@ -1,0 +1,23 @@
+# Synthetic account and local visibility state; no Keychain or persisted preference edits.
+flow:
+  - wait_for: { id: hub-nav }
+  - assert_text: { id: sidebar-repository-count, text: "2 of 2 repositories shown" }
+  - navigate: { route: "repo:fixture-org~day" }
+  - context_menu: { id: repository-title, item_id: toggle-hidden-repository }
+  - assert_text: { id: sidebar-repository-count, text: "1 of 2 repositories shown" }
+  - menu: { id: toggle-hidden-repositories }
+  - assert_text: { id: sidebar-repository-count, text: "2 of 2 repositories shown" }
+  - navigate: { route: "repo:fixture-org~day" }
+  - context_menu: { id: repository-title, item_id: toggle-hidden-repository }
+  - menu: { id: toggle-hidden-repositories }
+  - assert_text: { id: sidebar-repository-count, text: "2 of 2 repositories shown" }
+  - navigate: { route: "repo:fixture-org~day" }
+  - context_menu: { id: repository-title, item_id: toggle-hidden-owner }
+  - assert_text: { id: sidebar-repository-count, text: "1 of 2 repositories shown" }
+  - menu: { id: toggle-hidden-repositories }
+  - assert_text: { id: sidebar-repository-count, text: "2 of 2 repositories shown" }
+  - screenshot: { name: hidden-repositories }
+  - navigate: { route: "repo:fixture-org~day" }
+  - context_menu: { id: repository-title, item_id: toggle-hidden-owner }
+  - menu: { id: toggle-hidden-repositories }
+  - assert_text: { id: sidebar-repository-count, text: "2 of 2 repositories shown" }

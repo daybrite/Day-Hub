@@ -1,0 +1,11 @@
+{
+  "$schema": "https://appfair.org/schemas/appindex/v1.json",
+  "apps": [{
+    "name": "Day-Hub",
+    "source": {"url": "https://github.com/daybrite/Day-Hub"},
+    "title": {"en": "Day Hub"},
+    "subtitle": {"en": "Your repositories and GitHub Actions in a native workspace"},
+    "description": {"en": "Browse your GitHub repositories by owner, keep local favorites, inspect repository activity and workflow runs, and monitor selected repositories from the macOS menu bar."},
+    "platforms": {"macos": {"platform": "macos-appkit", "version": "0.1.0"}}
+  }]
+}

@@ -1,0 +1,35 @@
+# Run with DAY_HUB_FIXTURE=1. Synthetic account data; no OAuth, Keychain reads or network.
+# Settings changes stay in the draft: this flow never saves the user's monitoring preferences.
+flow:
+  - wait_for: { id: hub-nav }
+  - assert_text: { id: github-account, text: "Signed in as fixture-user" }
+  - assert_text: { id: repository-count, text: "2 accessible repositories" }
+  - screenshot: { name: account }
+  - navigate: { route: "repo:fixture-org~day" }
+  - wait_for: { id: language-chart }
+  - screenshot: { name: repository-overview }
+  - navigate: { route: "repo:fixture-org~day/actions" }
+  - wait_for: { id: run-chart }
+  - tap: { id: run-100 }
+  - wait_for: { id: run-jobs }
+  - scroll_to: { id: run-jobs }
+  - screenshot: { name: repository-actions }
+  - navigate: { route: settings }
+  - wait_for: { id: monitor-rows }
+  - input: { id: known-repository-search, text: "fixture-org/day" }
+  - tap: { id: known-add-1 }
+  - assert_missing: { id: known-add-1 }
+  - tap: { id: monitor-remove-fixture-org~day }
+  - assert_missing: { id: monitor-remove-fixture-org~day }
+  - input: { id: monitor-input, text: "fixture/../invalid" }
+  - tap: { id: monitor-add }
+  - assert_text: { id: monitor-message, key: invalid_repository, args: { line: "1" } }
+  - input: { id: monitor-input, text: "fixture/new" }
+  - tap: { id: monitor-add }
+  - tap: { id: monitor-separator }
+  - reorder: { id: monitor-rows, from: 1, to: 2 }
+  - tap: { id: monitor-remove-separator-1 }
+  - assert_missing: { id: monitor-remove-separator-1 }
+  - screenshot: { name: monitor-editor }
+  - navigate: { route: account }
+  - assert_text: { id: github-account, text: "Signed in as fixture-user" }

@@ -1,0 +1,5 @@
+host = "https://daybrite.github.io/Day-Hub"
+title = "Day Hub"
+locales = ["en"]
+show-gallery = false
+show-store-badges = false

@@ -1,0 +1,30 @@
+---
+import { str } from '../../generated/strings.mjs';
+const home = import.meta.env.BASE_URL;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>{str.callback_title()}</title>
+    <script is:inline>
+      // Authorization codes are deliberately neither consumed nor forwarded. Remove callback
+      // parameters from history immediately; this static page contains no analytics or embeds.
+      history.replaceState(null, '', location.pathname);
+    </script>
+    <style>
+      :root{color-scheme:light dark;font-family:system-ui,sans-serif;background:light-dark(#f5f7fa,#10151e);color:light-dark(#172033,#edf2fa)}
+      body{margin:0;min-height:100vh;display:grid;place-items:center}
+      main{max-width:38rem;padding:3rem;border-radius:1.5rem;background:light-dark(white,#1c2533);box-shadow:0 1rem 4rem #0002}
+      h1{font-size:2.4rem;letter-spacing:-.04em}p{line-height:1.7}a{color:inherit}.button{display:inline-block;background:#3463d4;color:white;padding:.8rem 1.2rem;border-radius:.6rem;text-decoration:none;margin:1rem 0}
+    </style>
+  </head>
+  <body><main>
+    <h1>{str.callback_title()}</h1><p>{str.callback_help()}</p>
+    <a class="button" href="day-hub://open">{str.callback_return()}</a>
+    <p>{str.callback_missing()}</p><a href={home}>{str.callback_home()}</a>
+  </main></body>
+</html>

@@ -1,0 +1,14 @@
+schema = 1
+url_schemes = ["day-hub"]
+
+[app]
+id = "dev.daybrite.hub"
+title = "Day Hub"
+targets = ["macos-appkit"]
+
+[app.macos]
+dock = true
+
+[window]
+width = 1180
+height = 800
