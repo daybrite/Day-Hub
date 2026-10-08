@@ -6,3 +6,6 @@ xcuserdata/
 DerivedData/
 platform/*/DayApp.local.xcconfig
 .DS_Store
+# Copied from the daysite template on every site build (daysite/src/integration.mjs)
+/website/public/badges/
+/website/public/icons/
