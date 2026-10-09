@@ -6,7 +6,7 @@ use oauth2::{
     TokenUrl, basic::BasicClient,
 };
 use serde::{Deserialize, Serialize};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Credential {
@@ -17,10 +17,7 @@ pub struct Credential {
 }
 
 pub fn now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
+    crate::clock::unix_seconds()
 }
 fn entry() -> Result<keyring::Entry, Error> {
     keyring::Entry::new("dev.daybrite.hub.github", "github.com").map_err(|_| Error::Keychain)

@@ -1,9 +1,11 @@
 //! Day Hub: a native GitHub workspace and compact Actions menu bar monitor.
+use crate::clock::Instant;
 use day::prelude::*;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 mod api;
 mod auth;
+mod clock;
 mod editor;
 pub mod github;
 pub mod grid;
@@ -254,10 +256,7 @@ pub fn root() -> impl Piece {
     let timer = day::task(async move {
         let mut ticks = 0;
         loop {
-            if std::env::var_os("DAY_HUB_FIXTURE").is_none()
-                && !app.paused.get()
-                && Instant::now() >= app.next.get()
-            {
+            if !hub::is_fixture() && !app.paused.get() && Instant::now() >= app.next.get() {
                 app.refresh(false);
             }
             day::sleep(1000).await;

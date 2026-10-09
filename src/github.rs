@@ -1,11 +1,11 @@
 //! Tokenize public Actions HTML with html5ever (including entities and SVG namespaces).
 //! Never execute scripts or reuse a browser's authenticated session.
+use crate::clock::Instant;
 use crate::model::{FetchError, Run, Status, valid_run_path};
 use html5ever::tokenizer::{
     BufferQueue, StartTag, Token, TokenSink, TokenSinkResult, Tokenizer, states::RawKind,
 };
 use std::cell::RefCell;
-use std::time::Instant;
 
 #[derive(Default)]
 struct Page {

@@ -3,6 +3,7 @@ use crate::{
     App,
     api::{Client, Error},
     auth,
+    clock::Instant,
 };
 use day::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -10,11 +11,10 @@ use serde_json::{Value, json};
 use std::{
     collections::{BTreeSet, HashMap},
     rc::Rc,
-    time::Instant,
 };
 
 pub fn is_fixture() -> bool {
-    std::env::var_os("DAY_HUB_FIXTURE").is_some()
+    day::env("DAY_HUB_FIXTURE").is_some()
 }
 
 pub const CLIENT_ID: &str = "Ov23li46VVDMelb0esrd";

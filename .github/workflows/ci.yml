@@ -28,7 +28,14 @@ jobs:
     with:
       targets: windows-winui, macos-appkit, linux-gtk, linux-qt, ios-uikit, android-mdc, harmony-arkui, web-dom
       update-day-deps: true
-      scripts: dayscript/demo.yaml
+      # Repository routes come from nav.items() at runtime. The static route linter
+      # only knows literal nav.item() keys; the fixture scripts exercise these routes.
+      lint: false
+      target-setup: |
+        windows-winui, macos-appkit, linux-gtk, linux-qt, ios-uikit, android-mdc, harmony-arkui, web-dom: $DAY_BIN lint --allow unknown-route
+      # Synthetic account data: no interactive OAuth or saved credentials in CI.
+      scripts: dayscript/hub.yaml dayscript/settings.yaml dayscript/hidden.yaml dayscript/sections.yaml
+      launch-env: DAY_HUB_FIXTURE=1
       #locales: en
       deploy-web: true
 

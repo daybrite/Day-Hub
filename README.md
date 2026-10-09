@@ -124,6 +124,19 @@ GitHub's official Octokit clients are JavaScript; this native implementation use
 
 ## Validation
 
+CI resolves dependencies from Git, without the machine-local `.cargo/config.toml` patches.
+Keep the committed `Cargo.lock` Git-resolved: local patched builds remove the Day and charts
+Git sources from it, which breaks CI's `cargo update -p day --precise ...` step. When refreshing
+the lockfile, use a clean checkout without local patches and verify `cargo metadata --locked`.
+
+The workflow runs the four synthetic-account scripts below with `DAY_HUB_FIXTURE=1`.
+The live OAuth script is intentionally manual because it requires browser authorization.
+Cargo features and native host projects cover the workflow's full target matrix. Fixture
+checks exercise the UI without validating live OAuth or credential persistence on each OS.
+The workflow runs all Day lint checks except `unknown-route`: repository destinations are
+created dynamically by `nav.items()`, which the static route scanner cannot enumerate.
+Navigation remains covered by the fixture scripts.
+
 ```sh
 cargo test --offline --lib
 cargo clippy --offline --all-targets -- -D warnings
@@ -132,6 +145,7 @@ cargo fmt --all -- --check
 day launch -p macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/hub.yaml
 day launch -p macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/settings.yaml
 day launch -p macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/hidden.yaml
+day launch -p macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/sections.yaml
 # Signed out, with network: initiates and cancels a real device grant.
 day launch -p macos-appkit --script dayscript/login.yaml
 ```

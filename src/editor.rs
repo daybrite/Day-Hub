@@ -89,13 +89,15 @@ pub fn repositories(draft: Signal<String>) -> impl Piece {
                 })
                 .grow_w(),
                 button(res::str::remove_row())
-                    .id(format!(
-                        "monitor-remove-{}",
-                        slot.get()
-                            .repository
-                            .map(|r| r.replace('/', "~"))
-                            .unwrap_or_else(|| format!("separator-{}", slot.get().id))
-                    ))
+                    .id_of(move || {
+                        format!(
+                            "monitor-remove-{}",
+                            slot.get()
+                                .repository
+                                .map(|r| r.replace('/', "~"))
+                                .unwrap_or_else(|| format!("separator-{}", slot.get().id))
+                        )
+                    })
                     .action(move || {
                         let id = slot.get().id;
                         rows.update(|r| r.retain(|v| v.id != id));
@@ -160,7 +162,7 @@ pub fn repositories(draft: Signal<String>) -> impl Piece {
                 row((
                     label(move || slot.get().full_name).grow_w(),
                     button(res::str::add_repository())
-                        .id(format!("known-add-{}", slot.get().id))
+                        .id_of(move || format!("known-add-{}", slot.get().id))
                         .action(move || add(slot.get().full_name)),
                 ))
                 .spacing(10.0)

@@ -645,7 +645,7 @@ fn actions(hub: Hub, name: String) -> impl Piece {
                             )
                             .format()
                         })
-                        .id(format!("run-{}", number(&slot.get(), "id")))
+                        .id_of(move || format!("run-{}", number(&slot.get(), "id")))
                         .action(move || hub.load_run(name.clone(), number(&slot.get(), "id"))),
                         label(move || {
                             let r = slot.get();
