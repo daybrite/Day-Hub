@@ -14,8 +14,10 @@ day launch -p macos-appkit
 
 This checkout also patches `day-piece-charts` to the adjacent checkout in `.cargo/config.toml`.
 The local Day changes provide native status images and reliable menu actions. Launch opens the
-main window and starts the menu monitor. Closing the window leaves monitoring running; **Open
-Day Hub** and **Settings** in the status menu reopen it. Quit explicitly to stop the app.
+main window and starts the menu monitor. Closing the window leaves monitoring running; **Show
+Main Window** in File or the status menu and **Settings** reopen it. On macOS, the application
+menu provides **Hide Day Hub** (⌘H), **Hide Others** (⌥⌘H), and **Show All**; **File → Close**
+(⌘W) closes the current window. Quit explicitly to stop the app.
 
 ## Sign in and browse
 

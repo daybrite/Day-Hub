@@ -239,17 +239,21 @@ pub fn root() -> impl Piece {
     app_menu_reactive(move || {
         vec![
             sub_menu(
-                res::str::app_title().format(),
+                res::str::file_menu().format(),
                 vec![
                     menu_item(res::str::open_hub().format()).action(ui::show_main),
+                    menu_role(MenuRole::CloseWindow),
+                    menu_separator(),
                     menu_role(MenuRole::Preferences).action(ui::show_settings),
                     menu_role(MenuRole::Quit),
                 ],
-            ),
+            )
+            .bar_role(MenuBarRole::File),
             sub_menu(
                 res::str::view_menu().format(),
                 vec![ui::hidden_filter_menu(hub)],
-            ),
+            )
+            .bar_role(MenuBarRole::View),
         ]
     });
     status_item("hublights", move || status(app));
