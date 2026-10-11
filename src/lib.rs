@@ -13,7 +13,7 @@ mod hub;
 pub mod model;
 mod ui;
 mod visibility;
-use model::{FetchError, Project, Status};
+use model::{FetchError, Project, RepositoryOrder, Status};
 day::resources!();
 day::day_start!(options: main_window(), root);
 
@@ -46,6 +46,8 @@ struct App {
     interval: Signal<u64>,
     history: Signal<usize>,
     grid_options: Signal<grid::Options>,
+    repository_order: Signal<RepositoryOrder>,
+    show_grid: Signal<bool>,
     grid: day::reactive::Memo<grid::Grid>,
     paused: Signal<bool>,
     progress: Signal<Option<(usize, usize)>>,
@@ -70,14 +72,22 @@ impl App {
             column_width: saved_number("grid.columnWidth", 6, 2, 10) as u32,
             max_width: saved_number("grid.maxWidth", 480, 80, 600) as u32,
         });
+        let repository_order = Signal::global(RepositoryOrder::from_key(
+            &day::prefs::get("grid.repositoryOrder").unwrap_or_default(),
+        ));
         let grid = day::reactive::Scope::root().enter(|| {
             day::reactive::Memo::new(move || {
-                grid::render(&model::ordered(projects.get()), grid_options.get())
+                grid::render(
+                    &model::ordered(projects.get(), repository_order.get()),
+                    grid_options.get(),
+                )
             })
         });
         Self {
             projects,
             grid_options,
+            repository_order,
+            show_grid: Signal::global(day::prefs::get("grid.visible").as_deref() != Some("false")),
             grid,
             repositories: Signal::global(repositories),
             interval: Signal::global(saved_number("updateInterval", 60, 15, 3600)),
@@ -101,7 +111,7 @@ impl App {
             return;
         }
         self.backoff.set(None);
-        let projects = model::ordered(self.projects.get());
+        let projects = self.projects.get();
         let total = projects.len();
         day::info!("Starting refresh of {total} repositories (force={force})");
         self.progress.set(Some((0, total)));
@@ -227,6 +237,15 @@ pub fn root() -> impl Piece {
     let hub = hub::Hub::new(app);
     day::set_dock_visible(true);
     day::register_new_window(move || ui::window(hub));
+    if ui::desktop_settings() {
+        day::register_preferences_with(
+            day::WindowOptions {
+                title: res::str::settings_title().format(),
+                ..window()
+            },
+            move || settings(app),
+        );
+    }
     day::set_keep_running(day::KeepRunning::Always);
     day::on_open_url(|url| {
         if url == "day-hub://open" {
@@ -322,7 +341,7 @@ fn open_github_page(url: &str) {
 }
 
 fn status(app: App) -> StatusItem {
-    let projects = model::ordered(app.projects.get());
+    let projects = model::ordered(app.projects.get(), app.repository_order.get());
     let mut menu = vec![
         menu_item(res::str::open_hub().format()).action(ui::show_main),
         menu_item(app.summary()).enabled(false),
@@ -402,10 +421,15 @@ fn status(app: App) -> StatusItem {
         menu_separator(),
         menu_role(MenuRole::Quit),
     ]);
-    let grid = app.grid.get();
     let item = StatusItem::new()
         .tooltip(res::str::grid_tooltip(app.summary()).format())
         .menu(menu);
+    if !app.show_grid.get() {
+        return item
+            .title(res::str::app_title().format())
+            .tooltip(app.summary());
+    }
+    let grid = app.grid.get();
     if let Some(image) = grid.image {
         let item = item.raster(image);
         if grid.hidden > 0 {
@@ -422,6 +446,19 @@ fn settings(app: App) -> impl Piece {
     let repositories = Signal::new(app.repositories.get());
     let interval = Signal::new(app.interval.get().to_string());
     let history = Signal::new(app.history.get().to_string());
+    let show_grid = Signal::new(app.show_grid.get());
+    let repository_order = Signal::new(
+        RepositoryOrder::ALL
+            .iter()
+            .position(|order| *order == app.repository_order.get())
+            .unwrap_or(0),
+    );
+    let draft_order = move || {
+        RepositoryOrder::ALL
+            .get(repository_order.get())
+            .copied()
+            .unwrap_or_default()
+    };
     let options = app.grid_options.get();
     let rows = Signal::new(options.rows.to_string());
     let column_width = Signal::new(options.column_width.to_string());
@@ -437,9 +474,12 @@ fn settings(app: App) -> impl Piece {
     };
     let preview = day::reactive::Memo::new(move || {
         grid::render(
-            &model::reconcile(
-                model::parse_projects(&repositories.get()).unwrap_or_default(),
-                &app.projects.get(),
+            &model::ordered(
+                model::reconcile(
+                    model::parse_projects(&repositories.get()).unwrap_or_default(),
+                    &app.projects.get(),
+                ),
+                draft_order(),
             ),
             draft_options().unwrap_or(app.grid_options.get()),
         )
@@ -447,18 +487,36 @@ fn settings(app: App) -> impl Piece {
     scroll(
         form((
             section((
-                label(res::str::monitor_editor_help()),
-                editor::repositories(repositories),
-            ))
-            .title(res::str::repositories()),
-            section((
                 labeled(res::str::interval(), text_field(interval).id("interval")),
+                label(move || app.summary()).id("summary"),
+                label(move || app.update_text()).id("update-status"),
+            ))
+            .title(res::str::refresh_settings()),
+            section((
+                labeled(res::str::show_grid(), toggle(show_grid).id("show-grid")),
+                labeled(
+                    res::str::menu_repository_order(),
+                    picker(
+                        RepositoryOrder::ALL
+                            .iter()
+                            .map(|order| match order {
+                                RepositoryOrder::Recency => res::str::order_recency().format(),
+                                RepositoryOrder::Alphabetical => {
+                                    res::str::order_alphabetical().format()
+                                }
+                            })
+                            .collect::<Vec<_>>(),
+                        repository_order,
+                    )
+                    .menu()
+                    .id("menu-repository-order"),
+                ),
                 labeled(
                     res::str::history_count(),
                     text_field(history).id("history-count"),
                 ),
             ))
-            .title(res::str::refresh_settings()),
+            .title(res::str::menu_bar_settings()),
             section((
                 labeled(res::str::grid_rows(), text_field(rows).id("grid-rows")),
                 labeled(
@@ -493,6 +551,11 @@ fn settings(app: App) -> impl Piece {
             ))
             .title(res::str::grid_settings()),
             section((
+                label(res::str::monitor_editor_help()),
+                editor::repositories(repositories),
+            ))
+            .title(res::str::monitored_repositories()),
+            section((
                 button(res::str::save()).id("save").action(move || {
                     let projects = match model::parse_projects(&repositories.get()) {
                         Ok(projects) => projects,
@@ -517,7 +580,12 @@ fn settings(app: App) -> impl Piece {
                         && day::prefs::set("statusBadgeCount", &count.to_string())
                         && day::prefs::set("grid.rows", &options.rows.to_string())
                         && day::prefs::set("grid.columnWidth", &options.column_width.to_string())
-                        && day::prefs::set("grid.maxWidth", &options.max_width.to_string()))
+                        && day::prefs::set("grid.maxWidth", &options.max_width.to_string())
+                        && day::prefs::set("grid.repositoryOrder", draft_order().key())
+                        && day::prefs::set(
+                            "grid.visible",
+                            if show_grid.get() { "true" } else { "false" },
+                        ))
                     {
                         message.set(res::str::save_failed().format());
                         return;
@@ -529,15 +597,17 @@ fn settings(app: App) -> impl Piece {
                     app.interval.set(seconds);
                     app.history.set(count);
                     app.grid_options.set(options);
+                    app.repository_order.set(draft_order());
+                    app.show_grid.set(show_grid.get());
                     app.next.set(Instant::now());
                     message.set(res::str::saved().format());
                     app.refresh(true);
                 }),
                 label(move || message.get()).id("settings-message"),
-                label(move || app.summary()).id("summary"),
-                label(move || app.update_text()).id("update-status"),
             )),
         ))
         .padding(20.0),
     )
+    .grow()
+    .id("settings-page")
 }

@@ -60,8 +60,8 @@ fn color(status: Status) -> u32 {
     }
 }
 
-/// Input follows the menu's order: groups in preference order, newest repository first
-/// within each group. Latest run is always at the top. A half-point gutter separates cells.
+/// Input follows the menu's order: groups in preference order, repositories sorted
+/// within each group by the selected order. Latest run is always at the top. A half-point gutter separates cells.
 /// Cap width in points, not repository count; the caller shows a localized overflow count.
 pub fn render(projects: &[Project], options: Options) -> Grid {
     let options = if options.valid() {

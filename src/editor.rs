@@ -41,6 +41,7 @@ fn move_row(rows: &mut Vec<Entry>, from: usize, to: usize) {
 pub fn repositories(draft: Signal<String>) -> impl Piece {
     let rows = Signal::new(decode(&draft.get()));
     let next = Signal::new(rows.with(|r| r.len()) as u64);
+    let selected = Signal::new(None::<u64>);
     let input = Signal::new(String::new());
     let filter = Signal::new(String::new());
     let message = Signal::new(String::new());
@@ -50,6 +51,12 @@ pub fn repositories(draft: Signal<String>) -> impl Piece {
             draft.set(encode(rows));
         },
     );
+    let remove = move |id: u64| {
+        rows.update(|r| r.retain(|v| v.id != id));
+        if selected.get() == Some(id) {
+            selected.set(None);
+        }
+    };
     let add = move |name: String| {
         let valid = model::parse_projects(&name).ok().filter(|p| p.len() == 1);
         let Some(projects) = valid else {
@@ -75,35 +82,53 @@ pub fn repositories(draft: Signal<String>) -> impl Piece {
                 repository: Some(name),
             })
         });
+        selected.set(Some(id));
         input.set(String::new());
         message.set(String::new());
     };
     column((
-        label(res::str::monitored_repositories()).font(Font::Headline),
         list(items(move || rows.get(), |r: &Entry| r.id), move |slot| {
-            row((
-                label(move || {
+            when(
+                move || slot.get().repository.is_some(),
+                move || label(move || slot.get().repository.unwrap_or_default()).grow_w(),
+            )
+            .otherwise(|| divider().grow_w().a11y(|a| a.label(res::str::separator())))
+            .padding(10.0)
+            .grow_w()
+            .id_of(move || {
+                format!(
+                    "monitor-row-{}",
                     slot.get()
                         .repository
-                        .unwrap_or_else(|| res::str::separator().format())
-                })
-                .grow_w(),
-                button(res::str::remove_row())
-                    .id_of(move || {
-                        format!(
-                            "monitor-remove-{}",
-                            slot.get()
-                                .repository
-                                .map(|r| r.replace('/', "~"))
-                                .unwrap_or_else(|| format!("separator-{}", slot.get().id))
-                        )
-                    })
-                    .action(move || {
-                        let id = slot.get().id;
-                        rows.update(|r| r.retain(|v| v.id != id));
-                    }),
-            ))
-            .spacing(10.0)
+                        .map(|r| r.replace('/', "~"))
+                        .unwrap_or_else(|| format!("separator-{}", slot.get().id))
+                )
+            })
+            .context_menu_fn(move |_| {
+                // Capture identity when the menu opens, before the native cell can recycle.
+                let id = slot.get().id;
+                vec![
+                    menu_item(res::str::remove_row().format())
+                        .id("monitor-remove")
+                        .action(move || remove(id)),
+                ]
+            })
+        })
+        .on_selection(move |ids| selected.set(ids.first().copied()))
+        .selected_rows(move || {
+            rows.with(|r| {
+                r.iter()
+                    .position(|v| Some(v.id) == selected.get())
+                    .into_iter()
+                    .collect()
+            })
+        })
+        .deletable(true)
+        .delete_label(res::str::remove_row().format())
+        .on_delete(move |index| {
+            if let Some(id) = rows.with(|r| r.get(index).map(|v| v.id)) {
+                remove(id);
+            }
         })
         .reorderable(true)
         .on_reorder(move |from, to| rows.update(|r| move_row(r, from, to)))
@@ -131,9 +156,18 @@ pub fn repositories(draft: Signal<String>) -> impl Piece {
                             repository: None,
                         })
                     });
+                    selected.set(Some(id));
                 }),
         ))
         .spacing(10.0),
+        button(res::str::remove_selected_row())
+            .id("monitor-remove-selected")
+            .enabled(move || selected.get().is_some())
+            .action(move || {
+                if let Some(id) = selected.get() {
+                    remove(id);
+                }
+            }),
         label(move || message.get()).id("monitor-message"),
         label(res::str::known_repositories()).font(Font::Headline),
         text_field(filter)

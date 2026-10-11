@@ -126,8 +126,51 @@ pub fn reconcile(mut new: Vec<Project>, previous: &[Project]) -> Vec<Project> {
     new
 }
 
-/// Preserve the user's explicit menu/grid ordering; separators assign groups during parsing.
-pub fn ordered(projects: Vec<Project>) -> Vec<Project> {
+/// Stable preference identifiers keep future picker additions independent of their position.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RepositoryOrder {
+    #[default]
+    Recency,
+    Alphabetical,
+}
+
+impl RepositoryOrder {
+    pub const ALL: &[Self] = &[Self::Recency, Self::Alphabetical];
+
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Recency => "recency",
+            Self::Alphabetical => "alphabetical",
+        }
+    }
+
+    pub fn from_key(key: &str) -> Self {
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|order| order.key() == key)
+            .unwrap_or_default()
+    }
+}
+
+/// Keep explicit groups together, sorting inside each group. Missing/invalid timestamps
+/// come last; names break recency ties so refresh completion order never affects the grid.
+pub fn ordered(mut projects: Vec<Project>, order: RepositoryOrder) -> Vec<Project> {
+    projects.sort_by_cached_key(|p| {
+        let latest = match order {
+            RepositoryOrder::Recency => p
+                .runs
+                .iter()
+                .filter_map(|run| chrono::DateTime::parse_from_rfc3339(&run.started).ok())
+                .max(),
+            RepositoryOrder::Alphabetical => None,
+        };
+        (
+            p.group,
+            std::cmp::Reverse(latest),
+            p.repo.to_ascii_lowercase(),
+        )
+    });
     projects
 }
 
@@ -186,7 +229,65 @@ mod tests {
     }
 
     #[test]
-    fn edits_keep_results_by_identity_and_preserve_manual_order() {
+    fn ordering_uses_latest_run_preserves_groups_and_handles_missing_dates() {
+        // Synthetic timestamps deliberately include offsets and out-of-order run history.
+        let mut projects = parse_projects("fixture/z\nfixture/a\nfixture/b\nfixture/missing\nfixture/invalid\n---\nfixture/newest").unwrap();
+        let dates: &[&[&str]] = &[
+            &["2026-01-01T08:00:00-05:00"],
+            &["2026-01-01T13:00:00Z"],
+            &["2025-01-01T00:00:00Z", "2026-01-01T14:00:00Z"],
+            &[],
+            &["invalid fixture timestamp"],
+            &["2027-01-01T00:00:00Z"],
+        ];
+        for (project, dates) in projects.iter_mut().zip(dates) {
+            project.runs = dates
+                .iter()
+                .map(|date| Run {
+                    started: (*date).into(),
+                    ..Default::default()
+                })
+                .collect();
+        }
+        let names = |order| {
+            ordered(projects.clone(), order)
+                .into_iter()
+                .map(|p| p.repo)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            names(RepositoryOrder::Recency),
+            [
+                "fixture/b",
+                "fixture/a",
+                "fixture/z",
+                "fixture/invalid",
+                "fixture/missing",
+                "fixture/newest"
+            ]
+        );
+        assert_eq!(
+            names(RepositoryOrder::Alphabetical),
+            [
+                "fixture/a",
+                "fixture/b",
+                "fixture/invalid",
+                "fixture/missing",
+                "fixture/z",
+                "fixture/newest"
+            ]
+        );
+        assert_eq!(
+            RepositoryOrder::from_key("unknown-future-order"),
+            RepositoryOrder::Recency
+        );
+        for order in RepositoryOrder::ALL {
+            assert_eq!(RepositoryOrder::from_key(order.key()), *order);
+        }
+    }
+
+    #[test]
+    fn edits_keep_results_by_identity() {
         let mut old = parse_projects("a/one\na/two\n---\na/three").unwrap();
         for (p, date) in old
             .iter_mut()
@@ -198,7 +299,7 @@ mod tests {
                 ..Default::default()
             });
         }
-        let sorted = ordered(old.clone());
+        let sorted = ordered(old.clone(), RepositoryOrder::Alphabetical);
         assert_eq!(
             sorted.iter().map(|p| p.repo.as_str()).collect::<Vec<_>>(),
             ["a/one", "a/two", "a/three"]

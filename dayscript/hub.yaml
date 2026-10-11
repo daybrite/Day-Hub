@@ -1,4 +1,4 @@
-# Run with DAY_HUB_FIXTURE=1. Synthetic account data; no OAuth, Keychain reads or network.
+# Run on desktop with DAY_HUB_FIXTURE=1. Synthetic account data; no OAuth, Keychain reads or network.
 # Settings changes stay in the draft: this flow never saves the user's monitoring preferences.
 flow:
   - wait_for: { id: hub-nav }
@@ -14,13 +14,15 @@ flow:
   - wait_for: { id: run-jobs }
   - scroll_to: { id: run-jobs }
   - screenshot: { name: repository-actions }
-  - navigate: { route: settings }
+  - menu: { key: day-preferences }
   - wait_for: { id: monitor-rows }
   - input: { id: known-repository-search, text: "fixture-org/day" }
+  - scroll_to: { id: known-repositories }
   - tap: { id: known-add-1 }
   - assert_missing: { id: known-add-1 }
-  - tap: { id: monitor-remove-fixture-org~day }
-  - assert_missing: { id: monitor-remove-fixture-org~day }
+  - scroll_to: { id: monitor-rows }
+  - context_menu: { id: monitor-row-fixture-org~day, item_id: monitor-remove }
+  - assert_missing: { id: monitor-row-fixture-org~day }
   - input: { id: monitor-input, text: "fixture/../invalid" }
   - tap: { id: monitor-add }
   - assert_text: { id: monitor-message, key: invalid_repository, args: { line: "1" } }
@@ -28,8 +30,15 @@ flow:
   - tap: { id: monitor-add }
   - tap: { id: monitor-separator }
   - reorder: { id: monitor-rows, from: 1, to: 2 }
-  - tap: { id: monitor-remove-separator-1 }
-  - assert_missing: { id: monitor-remove-separator-1 }
-  - screenshot: { name: monitor-editor }
+  - scroll_to: { id: monitor-rows }
+  - context_menu: { id: monitor-row-separator-1, item_id: monitor-remove }
+  - assert_missing: { id: monitor-row-separator-1 }
+  - scroll_to: { id: monitor-rows }
+  - select: { id: monitor-rows, index: 2 }
+  - tap: { id: monitor-remove-selected }
+  - assert_missing: { id: monitor-row-fixture~new }
+  - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 3 } }
+  - screenshot: { name: monitor-editor, window: day.preferences }
+  - close_window: { window: day.preferences }
   - navigate: { route: account }
   - assert_text: { id: github-account, text: "Signed in as fixture-user" }

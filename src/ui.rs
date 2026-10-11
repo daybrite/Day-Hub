@@ -17,7 +17,20 @@ pub fn show_main() {
         day::open_new_window();
     }
 }
+pub fn desktop_settings() -> bool {
+    cfg!(not(any(
+        target_os = "ios",
+        target_os = "android",
+        target_env = "ohos",
+        target_arch = "wasm32"
+    )))
+}
+
 pub fn show_settings() {
+    if desktop_settings() {
+        day::open_preferences();
+        return;
+    }
     show_main();
     if let Some(hub) = crate::hub::current() {
         hub.selected.set("settings".into());
@@ -203,10 +216,15 @@ pub fn window(hub: Hub) -> impl Piece {
         .on_section_expansion(move |_, _| hub.save_collapsed_sections())
         .item("account".to_string(), res::str::account(), move || {
             account(hub)
-        })
-        .item("settings".to_string(), res::str::settings(), move || {
+        });
+    let navigation = if desktop_settings() {
+        navigation
+    } else {
+        navigation.item("settings".to_string(), res::str::settings(), move || {
             crate::settings(hub.monitor)
         })
+    };
+    let navigation = navigation
         .items(
             move || rows(hub),
             move |r| {

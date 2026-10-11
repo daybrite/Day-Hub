@@ -1,7 +1,17 @@
-# Run with DAY_HUB_FIXTURE=1. Invalid drafts must not overwrite saved preferences.
+# Run on desktop with DAY_HUB_FIXTURE=1. Invalid drafts must not overwrite saved preferences.
 flow:
   - wait_for: { id: hub-nav }
-  - navigate: { route: settings }
+  - menu: { key: day-preferences }
+  - assert_route: { route: account }
+  - assert_missing: { id: "sidebar:item:settings" }
+  - wait_for: { id: menu-repository-order }
+  - select: { id: menu-repository-order, index: 1 }
+  - toggle: { id: show-grid, value: false }
+  - menu: { key: day-preferences }
+  - assert_value: { id: menu-repository-order, value: 1 }
+  - assert_value: { id: show-grid, value: false }
+  - select: { id: menu-repository-order, index: 0 }
+  - toggle: { id: show-grid, value: true }
   - wait_for: { id: monitor-rows }
   - input: { id: interval, text: "0" }
   - scroll_to: { id: save }
@@ -12,10 +22,13 @@ flow:
   - scroll_to: { id: save }
   - tap: { id: save }
   - assert_text: { id: settings-message, key: invalid_grid }
-  - screenshot: { name: validation }
+  - screenshot: { name: validation, window: day.preferences }
+  - close_window: { window: day.preferences }
+  - assert_missing: { id: settings-page }
   - navigate: { route: account }
   - menu: { key: day-preferences }
   - wait_for: { id: monitor-rows }
   - scroll_to: { id: grid-preview }
   - assert_visible: { id: grid-preview }
-  - screenshot: { name: grid-settings }
+  - screenshot: { name: grid-settings, window: day.preferences }
+  - close_window: { window: day.preferences }

@@ -776,6 +776,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "day-macos-tabs"
+version = "0.5.0"
+dependencies = [
+ "day-core",
+ "day-reactive",
+ "day-spec",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+]
+
+[[package]]
 name = "day-macros"
 version = "0.5.0"
 
@@ -867,6 +879,7 @@ version = "0.5.0"
 dependencies = [
  "day-core",
  "day-dbus",
+ "day-macos-tabs",
  "day-pieces",
  "day-qt-sys",
  "day-spec",

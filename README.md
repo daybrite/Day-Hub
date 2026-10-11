@@ -9,7 +9,7 @@ remain intact. The repository list imported from the original HubLights is retai
 
 ```sh
 day patch --local ../day
-day launch -p macos-appkit
+day launch -t macos-appkit
 ```
 
 This checkout also patches `day-piece-charts` to the adjacent checkout in `.cargo/config.toml`.
@@ -66,17 +66,25 @@ GitHub mutations are not implemented.
 
 ## Configure the menu bar
 
-Open **Settings** in the main sidebar or status menu. Add repositories from the searchable account
-list or type `owner/repository`. Drag rows to reorder. **Add separator** creates a draggable group
-boundary; **Remove** works on repositories and separators. **Save and refresh** applies the draft.
-Leaving Settings without saving discards that draft. The plain-text `repositories` preference remains
+Open **Settings** from the app or status menu on desktop, or the sidebar on mobile. Desktop
+settings open in a separate window; reopening Settings focuses the existing window and keeps its
+draft. On mobile, settings remain a navigation page. Add repositories from the searchable account
+list or type `owner/repository`. Drag rows to arrange groups. **Add separator** creates a draggable
+visual divider. Select rows normally and use the context menu's **Remove** action, or **Remove
+selected row**, to remove repositories or dividers. **Save and refresh** applies the draft.
+Closing Settings without saving discards that draft. The plain-text `repositories` preference remains
 compatible with `owner/repository` lines and `---` group separators.
 
 Each repository is a grid column with its newest run at the top. Passed runs are green, failed red,
 running orange, queued yellow, cancelled/skipped gray and missing/unknown brown. Refresh failures
 outline retained results in pink. The menu also exposes textual statuses and direct Actions/run links.
-Manual repository order is shared by the grid and menu. Grid size, history and polling interval are
-configurable, with a live preview. Overflow repositories remain accessible through the menu.
+The **Repository order** picker defaults to **Recency**, sorting repositories by their latest run
+within each group, with alphabetical ties and repositories without dated runs last. **Alphabetical**
+sorts by owner/repository. The grid, preview and menu use the same order. Turn off **Show menu bar
+visualization** to replace the grid with the Day Hub title while retaining the status menu.
+Settings group monitoring, menu bar options, visualization layout and monitored repositories
+separately. Grid size, history and polling interval are configurable, with a live preview.
+Overflow repositories remain accessible through the menu.
 
 Signed-in monitoring uses the API, including private repositories. Signed-out monitoring retains the
 original public Actions HTML adapter, which reports parsing failures without erasing previous results.
@@ -94,7 +102,7 @@ and permission failures do not retry. GitHub API redirects are refused and pagin
 `https://api.github.com` to keep bearer credentials on the expected origin. No response bodies are
 cached on disk by the app's HTTP clients. The unauthenticated HTML adapter retains its own backoff.
 
-Run `day launch -p macos-appkit` without `--detach` for default Info logs showing request paths,
+Run `day launch -t macos-appkit` without `--detach` for default Info logs showing request paths,
 HTTP statuses, sizes, parsing and retries. `DAY_LOG=warn` reduces output. OAuth payloads and tokens
 are excluded. Repository names may appear in request URLs in logs.
 
@@ -144,12 +152,13 @@ cargo test --offline --lib
 cargo clippy --offline --all-targets -- -D warnings
 cargo clippy --offline --no-default-features --features appkit --all-targets -- -D warnings
 cargo fmt --all -- --check
-day launch -p macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/hub.yaml
-day launch -p macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/settings.yaml
-day launch -p macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/hidden.yaml
-day launch -p macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/sections.yaml
+day launch -t macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/hub.yaml
+day launch -t macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/settings.yaml
+day launch -t ios-uikit --env DAY_HUB_FIXTURE=1 --script dayscript/settings-mobile.yaml
+day launch -t macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/hidden.yaml
+day launch -t macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/sections.yaml
 # Signed out, with network: initiates and cancels a real device grant.
-day launch -p macos-appkit --script dayscript/login.yaml
+day launch -t macos-appkit --script dayscript/login.yaml
 ```
 
 Fixture mode uses explicitly synthetic repository/job/artifact data and skips Keychain restoration
