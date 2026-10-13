@@ -77,7 +77,11 @@ compatible with `owner/repository` lines and `---` group separators.
 
 Each repository is a grid column with its newest run at the top. Passed runs are green, failed red,
 running orange, queued yellow, cancelled/skipped gray and missing/unknown brown. Refresh failures
-outline retained results in pink. The menu also exposes textual statuses and direct Actions/run links.
+outline retained results in pink. Dark ticks within a cell indicate one, two, or three or more
+reruns; small cells use a corner mark to indicate any rerun. Run menu entries show the exact
+rerun count alongside the status and direct Actions/run links. Counts exclude the initial attempt
+and include reruns requested by people or automation. The signed-out HTML source does not report
+attempt counts, so its cells remain unmarked.
 The **Repository order** picker defaults to **Recency**, sorting repositories by their latest run
 within each group, with alphabetical ties and repositories without dated runs last. **Alphabetical**
 sorts by owner/repository. The grid, preview and menu use the same order. Turn off **Show menu bar
@@ -139,7 +143,11 @@ Keep the committed `Cargo.lock` Git-resolved: local patched builds remove the Da
 Git sources from it, which breaks CI's `cargo update -p day --precise ...` step. When refreshing
 the lockfile, use a clean checkout without local patches and verify `cargo metadata --locked`.
 
-The workflow runs the four synthetic-account scripts below with `DAY_HUB_FIXTURE=1`.
+The workflow runs four synthetic-account scripts with `DAY_HUB_FIXTURE=1`: `hub`, `hidden`,
+`sections`, and a Settings flow. Desktop uses `settings.yaml` to test the preferences window;
+mobile and web use `settings-mobile.yaml` to test the navigation page. Both Settings flows
+exercise invalid drafts without saving preferences. The shared hub flow captures the settings
+window only on desktop and the main window on mobile/web.
 The live OAuth script is intentionally manual because it requires browser authorization.
 Cargo features and native host projects cover the workflow's full target matrix. Fixture
 checks exercise the UI without validating live OAuth or credential persistence on each OS.
@@ -166,3 +174,14 @@ and automatic requests. UI scripts keep menu edits in the draft and do not save 
 Unit tests cover pagination, ETag revalidation, foreign-origin rejection, partial GraphQL errors,
 auth failures, retry timing, editor ordering/separators, workflow status/duration, HTML parsing and grid
 rendering. Full authorization and organization visibility require an interactive GitHub login.
+
+
+## Generated native projects
+
+Use a Day CLI with automatic native project generation; Apple builds require **Xcode 27
+or newer**. Xcode project documents, Android Gradle files, and HarmonyOS hvigor files are
+created under `build/` by `day prepare`, `day build`, and `day launch`. Open the selected
+project with `day open -t <target>`; edits to generated files are disposable. Apple Swift
+sources, plists and `.xcconfig` files, and any Android resource overlays, remain app-owned
+under `platform/`. For additional native configuration, use
+`day project add-target <target> --persist-native-project` to create a persistent override.

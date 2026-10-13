@@ -1,4 +1,4 @@
-# Run with DAY_HUB_FIXTURE=1 on mobile. Changes remain in the draft.
+# Run with DAY_HUB_FIXTURE=1 on mobile or web. Changes remain in the draft.
 flow:
   - wait_for: { id: hub-nav }
   - navigate: { route: settings }
@@ -13,8 +13,22 @@ flow:
   - select: { id: monitor-rows, index: 1 }
   - tap: { id: monitor-remove-selected }
   - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 2 } }
+  - input: { id: interval, text: "0" }
+  - scroll_to: { id: save }
+  - tap: { id: save }
+  - assert_text: { id: settings-message, key: invalid_settings }
+  - input: { id: interval, text: "60" }
+  - input: { id: grid-rows, text: "7" }
+  - scroll_to: { id: save }
+  - tap: { id: save }
+  - assert_text: { id: settings-message, key: invalid_grid }
+  - screenshot: { name: validation }
+  - scroll_to: { id: grid-preview }
+  - assert_visible: { id: grid-preview }
   - screenshot: { name: mobile-settings }
   - navigate: { route: account }
   - assert_text: { id: github-account, text: "Signed in as fixture-user" }
   - navigate: { route: settings }
   - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 3 } }
+  - assert_value: { id: menu-repository-order, value: 0 }
+  - navigate: { route: account }

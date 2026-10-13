@@ -7,6 +7,9 @@ flow:
   - assert_missing: { id: "sidebar:item:repo:fixture-org~day" }
   - assert_route: { route: "repo:fixture-org~day/overview" }
   - wait_for: { id: repository-title }
+  # On iPhone the detail covers the sidebar. Return before checking realized row ids.
+  # Native back is a no-op on a wide iPad where the sidebar already remains visible.
+  - nav_back: { native: true, only_on: [ios] }
   - expand: { id: nav-sections, row: "sidebar:header:owner:fixture-org", expanded: true }
   - wait_for: { id: "sidebar:item:repo:fixture-org~day" }
   - expand: { id: nav-sections, row: "sidebar:header:favorites", expanded: false }

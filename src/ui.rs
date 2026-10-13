@@ -90,6 +90,10 @@ pub fn monitor_run(value: &Value) -> Run {
         title: text(value, "display_title"),
         status: status(value),
         started: text(value, "run_started_at"),
+        attempt: value["run_attempt"]
+            .as_u64()
+            .and_then(|attempt| u32::try_from(attempt).ok())
+            .filter(|attempt| *attempt > 0),
         duration: res::str::duration_seconds(duration(value).to_string()).format(),
     }
 }
@@ -822,6 +826,46 @@ fn actions(hub: Hub, name: String) -> impl Piece {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn monitor_retains_attempts_and_formats_exact_rerun_counts() {
+        day::install_locales(res::locales::DEFAULT, res::locales::CATALOG);
+        // Synthetic API responses, including absent and malformed attempt metadata.
+        let mut value = serde_json::json!({
+            "display_title": "Fixture workflow", "conclusion": "success",
+            "html_url": "https://github.com/fixture/repo/actions/runs/1"
+        });
+        for (attempt, expected) in [(1, 0), (2, 1), (3, 2), (12, 11)] {
+            value["run_attempt"] = serde_json::json!(attempt);
+            let run = monitor_run(&value);
+            assert_eq!(run.reruns(), Some(expected));
+            let label = crate::run_menu_label(&run);
+            let label: String = label
+                .chars()
+                .filter(|c| !matches!(c, '\u{2068}' | '\u{2069}'))
+                .collect();
+            let expected_label = match expected {
+                0 => "Passed · Fixture workflow · 0 s".to_string(),
+                1 => "Passed · Fixture workflow · 0 s · 1 rerun".to_string(),
+                n => format!("Passed · Fixture workflow · 0 s · {n} reruns"),
+            };
+            assert_eq!(label, expected_label);
+        }
+        for invalid in [
+            serde_json::Value::Null,
+            serde_json::json!(0),
+            serde_json::json!(-1),
+            serde_json::json!("3"),
+            serde_json::json!(u64::MAX),
+        ] {
+            value["run_attempt"] = invalid;
+            let run = monitor_run(&value);
+            assert_eq!(run.reruns(), None);
+            assert!(!crate::run_menu_label(&run).contains("rerun"));
+        }
+        value.as_object_mut().unwrap().remove("run_attempt");
+        assert_eq!(monitor_run(&value).attempt, None);
+    }
+
     #[test]
     fn workflow_status_and_elapsed_time_use_api_fields() {
         let run = serde_json::json!({"status":"completed","conclusion":"timed_out","run_started_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:03:00Z"});

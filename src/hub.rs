@@ -132,14 +132,20 @@ impl Hub {
         if is_fixture() {
             h.fixture();
         } else {
-            match auth::restore() {
-                Ok(Some(token)) => {
-                    h.api.set(Some(Client::new(token)));
-                    h.reload();
+            // The Keychain read can wait on an unlock prompt: a pool job, not the UI thread.
+            day::task(async move {
+                let restored = day::spawn_blocking(auth::restore)
+                    .await
+                    .unwrap_or(Err(Error::Keychain));
+                match restored {
+                    Ok(Some(token)) => {
+                        h.api.set(Some(Client::new(token)));
+                        h.reload();
+                    }
+                    Ok(None) => {}
+                    Err(e) => h.error.set(Some(e)),
                 }
-                Ok(None) => {}
-                Err(e) => h.error.set(Some(e)),
-            }
+            });
         }
         h
     }
@@ -172,7 +178,9 @@ impl Hub {
                 if self.epoch.get() != epoch {
                     return Err(Error::Auth);
                 }
-                auth::save(&token)?;
+                day::spawn_blocking(move || auth::save(&token))
+                    .await
+                    .map_err(|_| Error::Keychain)??;
                 Ok(client)
             }
             .await;
@@ -203,12 +211,21 @@ impl Hub {
         self.busy.set(false);
     }
     pub fn sign_out(self) {
-        if !is_fixture()
-            && let Err(e) = auth::forget()
-        {
-            self.error.set(Some(e));
+        if is_fixture() {
+            self.finish_sign_out();
             return;
         }
+        // The Keychain delete can wait on an unlock prompt: a pool job, not the UI thread.
+        day::task(async move {
+            match day::spawn_blocking(auth::forget).await {
+                Ok(Ok(())) => self.finish_sign_out(),
+                Ok(Err(e)) => self.error.set(Some(e)),
+                Err(_) => self.error.set(Some(Error::Keychain)),
+            }
+        });
+    }
+    /// Forget the session's state once the credential is gone.
+    fn finish_sign_out(self) {
         self.cancel_login();
         for task in [self.list_task, self.detail_task, self.run_task] {
             if let Some(t) = task.get() {

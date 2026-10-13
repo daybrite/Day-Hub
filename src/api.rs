@@ -82,7 +82,10 @@ impl Client {
                 // The old refresh token may already be consumed. Keep the new credential even
                 // if Keychain is temporarily unavailable; never replay the old refresh token.
                 *self.credential.borrow_mut() = fresh.clone();
-                auth::save(&fresh)?;
+                let saved = fresh.clone();
+                day::spawn_blocking(move || auth::save(&saved))
+                    .await
+                    .map_err(|_| Error::Keychain)??;
             }
             let mut req = match &body {
                 Some(b) => Request::post(url, b.clone()).header("Content-Type", "application/json"),

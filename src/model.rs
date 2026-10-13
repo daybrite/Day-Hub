@@ -45,6 +45,14 @@ pub struct Run {
     pub status: Status,
     pub started: String,
     pub duration: String,
+    /// GitHub's attempt number (1 = initial run). None when the source does not report it.
+    pub attempt: Option<u32>,
+}
+
+impl Run {
+    pub fn reruns(&self) -> Option<u32> {
+        self.attempt.and_then(|attempt| attempt.checked_sub(1))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -295,6 +303,7 @@ mod tests {
         {
             p.runs.push(Run {
                 started: date.into(),
+                attempt: Some(3),
                 status: Status::Success,
                 ..Default::default()
             });

@@ -26,6 +26,10 @@ no_completed = No completed runs
 pass_rate = { $rate }% passing
 open_actions = Open Actions page
 run_label = { $status } · { $title } · { $duration }
+run_label_reruns = { $run } · { $count ->
+    [one] { $count } rerun
+   *[other] { $count } reruns
+    }
 repository_label = { $lights } { $repository }
 status_success = Passed
 status_failure = Failed
@@ -50,12 +54,12 @@ grid_settings = Visualization layout
 grid_rows = Runs per column (1–6)
 grid_column_width = Column width (2–10 points)
 grid_max_width = Maximum width (80–600 points)
-grid_help = Each column is a repository, with its newest run at the top. Gaps separate groups. Green: passed; red: failed; orange: running; yellow: queued; gray: cancelled or skipped; brown: no result. A pink outline marks a refresh error.
+grid_help = Each column is a repository, with its newest run at the top. Gaps separate groups. Green: passed; red: failed; orange: running; yellow: queued; gray: cancelled or skipped; brown: no result. A pink outline marks a refresh error. Dark ticks indicate one, two, or three or more reruns. Small cells use a corner mark for any rerun. Open the menu for exact counts.
 grid_preview = Menu bar grid preview
 grid_preview_empty = Add repositories to see the grid preview.
 grid_preview_count = { $shown } columns shown · { $hidden } more in the menu
 grid_overflow = +{ $count }
-grid_tooltip = { $summary }. One column per repository; newest runs at the top. Click for details.
+grid_tooltip = { $summary }. One column per repository; newest runs at the top. Dark marks indicate reruns. Click for details and exact counts.
 invalid_grid = Use 1–6 runs per column, a column width of 2–10 points, and a maximum width of 80–600 points.
 open_hub = Show Main Window
 file_menu = File

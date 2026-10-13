@@ -204,7 +204,11 @@ pub async fn fetch(repo: &str, force: bool) -> Result<Vec<Run>, FetchError> {
         );
         return Err(FetchError::Http(response.status));
     }
-    parse(&response.text(), repo)
+    // The tokenizer walks a few hundred kilobytes of HTML: a pool job, not the UI thread.
+    let (html, repo) = (response.text().to_string(), repo.to_owned());
+    day::spawn_blocking(move || parse(&html, &repo))
+        .await
+        .unwrap_or(Err(FetchError::Page))
 }
 
 #[cfg(test)]
@@ -233,6 +237,7 @@ mod tests {
             ("future state", Status::Unknown),
         ] {
             let runs = parse(&fixture(label), "fixture/repo").unwrap();
+            assert_eq!(runs[0].reruns(), None); // HTML does not provide attempt metadata.
             assert_eq!(runs.len(), 1);
             assert_eq!(runs[0].title, "Fixture & entity");
             assert_eq!(runs[0].status, status);

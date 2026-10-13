@@ -35,6 +35,9 @@ fn main() {
                     runs: (0..6)
                         .map(|row| Run {
                             status: statuses[(index + row * 3) % statuses.len()],
+                            // Synthetic attempts cover unknown, initial, one, two, and 3+ reruns.
+                            attempt: [None, Some(1), Some(2), Some(3), Some(4), Some(10)]
+                                [(index + row) % 6],
                             ..Default::default()
                         })
                         .collect(),

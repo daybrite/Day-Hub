@@ -7,6 +7,8 @@ const SCALE: u32 = 2;
 const HEIGHT: u32 = 18 * SCALE;
 const GAP: u32 = 3 * SCALE;
 const ERROR: u32 = 0xDE68CC;
+// Dark marks contrast with every status fill, independent of the menu bar's appearance.
+const RERUN: u32 = 0x111111;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Options {
@@ -60,6 +62,30 @@ fn color(status: Status) -> u32 {
     }
 }
 
+/// Inset marks leave both the status color and the refresh-error outline intact. Dimensions
+/// are raster pixels at SCALE=2. Small cells use a corner mark instead of ambiguous counts.
+fn rerun_marks(cells: &mut Vec<Cell>, cell: &Cell, reruns: u32) {
+    if reruns == 0 {
+        return;
+    }
+    let (count, tick_width, tick_height) = if cell.width >= 10 && cell.height >= 8 {
+        (reruns.min(3), 2, 3)
+    } else {
+        (1, (cell.width - 2).min(2), (cell.height - 2).min(2))
+    };
+    let span = count * tick_width + count - 1;
+    let start = cell.x + cell.width - 1 - span;
+    for tick in 0..count {
+        cells.push(Cell {
+            x: start + tick * (tick_width + 1),
+            y: cell.y + 1,
+            width: tick_width,
+            height: tick_height,
+            color: RERUN,
+        });
+    }
+}
+
 /// Input follows the menu's order: groups in preference order, repositories sorted
 /// within each group by the selected order. Latest run is always at the top. A half-point gutter separates cells.
 /// Cap width in points, not repository count; the caller shows a localized overflow count.
@@ -96,19 +122,18 @@ pub fn render(projects: &[Project], options: Options) -> Grid {
         for row in 0..options.rows {
             let y = row * HEIGHT / options.rows;
             let bottom = (row + 1) * HEIGHT / options.rows;
-            cells.push(Cell {
+            let run = project.runs.get(row as usize);
+            let cell = Cell {
                 x: width,
                 y,
                 width: column - 1,
                 height: bottom - y - 1,
-                color: color(
-                    project
-                        .runs
-                        .get(row as usize)
-                        .map(|r| r.status)
-                        .unwrap_or_default(),
-                ),
-            });
+                color: color(run.map(|r| r.status).unwrap_or_default()),
+            };
+            cells.push(cell.clone());
+            if let Some(reruns) = run.and_then(|r| r.reruns()) {
+                rerun_marks(&mut cells, &cell, reruns);
+            }
         }
         if project.error.is_some() {
             // An error outlines retained history; never turn a stale successful run into a
@@ -239,6 +264,86 @@ mod tests {
         assert!(bounded.image.as_ref().unwrap().size().width <= 80.0);
         assert_eq!(grid, render(&projects, Options::default()));
     }
+    #[test]
+    fn reruns_use_capped_ticks_and_leave_initial_or_unknown_attempts_unmarked() {
+        let mut project = fixture(0, &[Status::Success]);
+        let baseline = render(&[project.clone()], Options::default());
+        for attempt in [None, Some(0), Some(1)] {
+            project.runs[0].attempt = attempt;
+            assert_eq!(render(&[project.clone()], Options::default()), baseline);
+        }
+        for (attempt, count) in [(2, 1), (3, 2), (4, 3), (20, 3), (u32::MAX, 3)] {
+            project.runs[0].attempt = Some(attempt);
+            let grid = render(&[project.clone()], Options::default());
+            assert_eq!(
+                grid.cells.iter().filter(|c| c.color == RERUN).count(),
+                count
+            );
+            // Tick ends inside the top-right corner; status fill and gutters survive.
+            assert_eq!(pixel(&grid, 8, 1), [17, 17, 17, 255]);
+            assert_eq!(pixel(&grid, 8, 4), [48, 198, 107, 255]);
+            assert_eq!(pixel(&grid, 10, 1), [48, 198, 107, 255]);
+            assert_eq!(pixel(&grid, 11, 1)[3], 0);
+            assert_eq!(pixel(&grid, 8, 11)[3], 0);
+            assert_eq!(pixel(&grid, 8, 13), [148, 115, 84, 255]);
+        }
+    }
+
+    #[test]
+    fn rerun_marks_fit_every_grid_size_and_preserve_errors_and_status_colors() {
+        for status in [
+            Status::Success,
+            Status::Failure,
+            Status::Running,
+            Status::Queued,
+            Status::Cancelled,
+            Status::Skipped,
+            Status::Unknown,
+        ] {
+            for rows in 1..=6 {
+                for column_width in 2..=10 {
+                    let mut project = fixture(0, &[status; 6]);
+                    project.error = Some(FetchError::Network);
+                    for run in &mut project.runs {
+                        run.attempt = Some(5);
+                    }
+                    let grid = render(
+                        &[project],
+                        Options {
+                            rows,
+                            column_width,
+                            ..Options::default()
+                        },
+                    );
+                    let ticks_per_run = if column_width >= 6 && rows <= 4 { 3 } else { 1 };
+                    let marks: Vec<_> = grid.cells.iter().filter(|c| c.color == RERUN).collect();
+                    assert_eq!(marks.len(), (rows * ticks_per_run) as usize);
+                    for mark in marks {
+                        assert!(mark.x > 0 && mark.x + mark.width < column_width * SCALE - 1);
+                        assert!(mark.y > 0 && mark.y + mark.height < HEIGHT - 1);
+                    }
+                    for row in 0..rows {
+                        let y = row * HEIGHT / rows;
+                        let bottom = (row + 1) * HEIGHT / rows;
+                        // The bottom interior pixel retains the status even at minimum size.
+                        let fill = color(status);
+                        assert_eq!(
+                            pixel(&grid, 1, (bottom - 3) as usize),
+                            [(fill >> 16) as u8, (fill >> 8) as u8, fill as u8, 255]
+                        );
+                        assert_eq!(
+                            pixel(&grid, (column_width * SCALE - 1) as usize, y as usize)[3],
+                            0
+                        );
+                        assert_eq!(pixel(&grid, 1, (bottom - 1) as usize)[3], 0);
+                    }
+                    assert_eq!(pixel(&grid, 0, 0), [222, 104, 204, 255]);
+                    assert_eq!(pixel(&grid, 1, 34), [222, 104, 204, 255]);
+                }
+            }
+        }
+    }
+
     #[test]
     fn errors_preserve_run_colors_and_empty_input_has_no_image() {
         let mut project = fixture(0, &[Status::Success]);

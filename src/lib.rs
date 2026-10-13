@@ -340,6 +340,20 @@ fn open_github_page(url: &str) {
     open_url(url);
 }
 
+// Format on the UI thread when building the menu, not while fetching run metadata.
+fn run_menu_label(run: &model::Run) -> String {
+    let label = res::str::run_label(
+        run.duration.clone(),
+        status_label(run.status),
+        run.title.clone(),
+    )
+    .format();
+    match run.reruns() {
+        Some(count) if count > 0 => res::str::run_label_reruns(i64::from(count), label).format(),
+        _ => label,
+    }
+}
+
 fn status(app: App) -> StatusItem {
     let projects = model::ordered(app.projects.get(), app.repository_order.get());
     let mut menu = vec![
@@ -366,17 +380,7 @@ fn status(app: App) -> StatusItem {
         }
         for run in project.runs.iter().take(app.history.get()) {
             let url = format!("https://github.com{}", run.path);
-            runs.push(
-                menu_item(
-                    res::str::run_label(
-                        run.duration.clone(),
-                        status_label(run.status),
-                        run.title.clone(),
-                    )
-                    .format(),
-                )
-                .action(move || open_github_page(&url)),
-            );
+            runs.push(menu_item(run_menu_label(run)).action(move || open_github_page(&url)));
         }
         let history = project
             .runs
