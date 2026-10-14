@@ -1,6 +1,7 @@
 //! GitHub's public-client device grant. Passwords stay in the system browser; tokens live
 //! only in memory and the OS credential store. Never log OAuth payloads or token values.
 use crate::api::Error;
+use day_part_http::{Cache, Client as Http, Redirects, Request};
 use oauth2::{
     ClientId, DeviceAuthorizationUrl, Scope, StandardDeviceAuthorizationResponse, TokenResponse,
     TokenUrl, basic::BasicClient,
@@ -53,7 +54,17 @@ pub fn forget() -> Result<(), Error> {
 // oauth2 owns the protocol, interval, slow_down and expiration logic. Day owns the transport.
 // GitHub returns OAuth errors with HTTP 200; normalize that to OAuth's standard error status.
 async fn transport(request: oauth2::HttpRequest) -> Result<oauth2::HttpResponse, std::io::Error> {
-    use day_part_http::{Cache, Client, Redirects, Request};
+    let client = Http::builder()
+        .redirects(Redirects::Never)
+        .cache(Cache::Off)
+        .build();
+    transport_with(&client, request).await
+}
+
+async fn transport_with(
+    client: &Http,
+    request: oauth2::HttpRequest,
+) -> Result<oauth2::HttpResponse, std::io::Error> {
     let mut req = Request::post(request.uri().to_string(), request.body().clone())
         .header("Accept", "application/json")
         .header("User-Agent", "Day-Hub")
@@ -61,10 +72,6 @@ async fn transport(request: oauth2::HttpRequest) -> Result<oauth2::HttpResponse,
     for (name, value) in request.headers() {
         req = req.header(name.as_str(), value.to_str().unwrap_or_default());
     }
-    let client = Client::builder()
-        .redirects(Redirects::Never)
-        .cache(Cache::Off)
-        .build();
     day::info!("GitHub OAuth request: {}", request.uri().path());
     let response = client
         .fetch_limited_future(req, 128 * 1024)
@@ -138,21 +145,46 @@ pub async fn finish(device: Device) -> Result<Credential, Error> {
         expires_at: token.expires_in().map(|d| now() + d.as_secs()),
     })
 }
-pub async fn refresh(old: &Credential) -> Result<Credential, Error> {
+pub async fn refresh(old: &Credential, http: &Http) -> Result<Credential, Error> {
     let refresh = old.refresh_token.as_ref().ok_or(Error::Auth)?;
     let client = BasicClient::new(ClientId::new(old.client_id.clone())).set_token_uri(
         TokenUrl::new("https://github.com/login/oauth/access_token".into()).unwrap(),
     );
-    // Refresh tokens may be single-use: never automatically replay this request.
+    // Make one attempt here. The caller can retry temporary failures after a cooldown;
+    // only a definitive rejection means the refresh token can no longer be used.
     let token = client
         .exchange_refresh_token(&oauth2::RefreshToken::new(refresh.clone()))
-        .request_async(&transport)
+        .request_async(&|request| transport_with(http, request))
         .await
-        .map_err(|_| Error::Auth)?;
+        .map_err(refresh_error)?;
     Ok(Credential {
         client_id: old.client_id.clone(),
         access_token: token.access_token().secret().clone(),
-        refresh_token: Some(token.refresh_token().ok_or(Error::Auth)?.secret().clone()),
+        refresh_token: Some(
+            token
+                .refresh_token()
+                .ok_or(Error::Invalid)?
+                .secret()
+                .clone(),
+        ),
         expires_at: token.expires_in().map(|d| now() + d.as_secs()),
     })
+}
+
+fn refresh_error(
+    error: oauth2::RequestTokenError<std::io::Error, oauth2::basic::BasicErrorResponse>,
+) -> Error {
+    use oauth2::{RequestTokenError, basic::BasicErrorResponseType};
+    // Never log the OAuth error itself: parse errors can contain the response body.
+    match error {
+        RequestTokenError::Request(_) => Error::Network,
+        RequestTokenError::ServerResponse(response) => match response.error() {
+            BasicErrorResponseType::Extension(code) => match code.as_str() {
+                "bad_refresh_token" | "incorrect_client_credentials" => Error::Auth,
+                _ => Error::Invalid,
+            },
+            _ => Error::Auth,
+        },
+        RequestTokenError::Parse(..) | RequestTokenError::Other(_) => Error::Invalid,
+    }
 }

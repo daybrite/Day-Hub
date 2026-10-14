@@ -106,6 +106,11 @@ and permission failures do not retry. GitHub API redirects are refused and pagin
 `https://api.github.com` to keep bearer credentials on the expected origin. No response bodies are
 cached on disk by the app's HTTP clients. The unauthenticated HTML adapter retains its own backoff.
 
+Temporary OAuth token-refresh failures share a 30-second cooldown across repositories. A later
+request retries on the same client, so reconnecting after an outage does not require restarting
+Day Hub. Definitively rejected refresh tokens require signing in again. Canceling a refresh does
+not mark the credential as rejected; logs distinguish temporary failures from required sign-in.
+
 Run `day launch -t macos-appkit` without `--detach` for default Info logs showing request paths,
 HTTP statuses, sizes, parsing and retries. `DAY_LOG=warn` reduces output. OAuth payloads and tokens
 are excluded. Repository names may appear in request URLs in logs.

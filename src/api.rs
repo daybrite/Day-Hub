@@ -29,12 +29,17 @@ struct Cached {
     value: Value,
     next: Option<String>,
 }
+struct RefreshFailure {
+    error: Error,
+    // A rejected credential needs sign-in; temporary failures expire automatically.
+    retry_at: Option<u64>,
+}
 pub struct Client {
     credential: RefCell<Credential>,
     http: Http,
     gate: async_lock::Mutex<()>,
     blocked_until: Cell<u64>,
-    refresh_failed: Cell<bool>,
+    refresh_failure: RefCell<Option<RefreshFailure>>,
     poll_after: RefCell<HashMap<String, u64>>,
     cache: RefCell<HashMap<String, Cached>>,
     pub remaining: Cell<Option<u64>>,
@@ -49,11 +54,61 @@ impl Client {
                 .build(),
             gate: async_lock::Mutex::new(()),
             blocked_until: Cell::new(0),
-            refresh_failed: Cell::new(false),
+            refresh_failure: RefCell::new(None),
             poll_after: RefCell::new(HashMap::new()),
             cache: RefCell::new(HashMap::new()),
             remaining: Cell::new(None),
         })
+    }
+    // Called with the request gate held. Keep persistence injectable so recovery tests
+    // exercise the real OAuth/HTTP pipeline without accessing the user's Keychain.
+    async fn refresh_credential<F: std::future::Future<Output = Result<(), Error>>>(
+        &self,
+        now: impl Fn() -> u64,
+        save: impl FnOnce(Credential) -> F,
+    ) -> Result<(), Error> {
+        let old = self.credential.borrow().clone();
+        if !old.expires_at.is_some_and(|at| at <= now() + 60) {
+            return Ok(());
+        }
+        if let Some(failure) = self.refresh_failure.borrow().as_ref()
+            && failure.retry_at.is_none_or(|at| now() < at)
+        {
+            match failure.retry_at {
+                Some(at) => day::info!(
+                    "GitHub credential refresh deferred: {:?}; retry in {} seconds",
+                    failure.error,
+                    at.saturating_sub(now())
+                ),
+                None => day::info!("GitHub credential refresh blocked: sign-in required"),
+            }
+            return Err(failure.error.clone());
+        }
+        let fresh = match auth::refresh(&old, &self.http).await {
+            Ok(fresh) => fresh,
+            Err(error) => {
+                let retry_at = (error != Error::Auth).then(|| now().saturating_add(30));
+                day::warn!(
+                    "GitHub credential refresh failed: {:?}; {}",
+                    error,
+                    if retry_at.is_some() {
+                        "will retry after 30 seconds"
+                    } else {
+                        "sign-in required"
+                    }
+                );
+                *self.refresh_failure.borrow_mut() = Some(RefreshFailure {
+                    error: error.clone(),
+                    retry_at,
+                });
+                return Err(error);
+            }
+        };
+        self.refresh_failure.borrow_mut().take();
+        // The old refresh token may already be consumed. Store the rotated credential
+        // before awaiting persistence, including if the request is canceled during save.
+        *self.credential.borrow_mut() = fresh.clone();
+        save(fresh).await
     }
     async fn request(
         &self,
@@ -72,21 +127,12 @@ impl Client {
             while auth::now() < until {
                 day::sleep((until.saturating_sub(auth::now()).min(30) * 1000) as u32).await;
             }
-            let old = self.credential.borrow().clone();
-            if old.expires_at.is_some_and(|at| at <= auth::now() + 60) {
-                if self.refresh_failed.replace(true) {
-                    return Err(Error::Auth);
-                }
-                let fresh = auth::refresh(&old).await?;
-                self.refresh_failed.set(false);
-                // The old refresh token may already be consumed. Keep the new credential even
-                // if Keychain is temporarily unavailable; never replay the old refresh token.
-                *self.credential.borrow_mut() = fresh.clone();
-                let saved = fresh.clone();
+            self.refresh_credential(auth::now, |saved| async move {
                 day::spawn_blocking(move || auth::save(&saved))
                     .await
-                    .map_err(|_| Error::Keychain)??;
-            }
+                    .map_err(|_| Error::Keychain)?
+            })
+            .await?;
             let mut req = match &body {
                 Some(b) => Request::post(url, b.clone()).header("Content-Type", "application/json"),
                 None => Request::get(url),
@@ -368,7 +414,7 @@ mod tests {
         );
     }
     use day_part_http::{
-        Capabilities, Head,
+        Capabilities, Head, HttpError,
         transport::{Answer, Event, Events, Prepared, QuestionId, Transfer, Transport},
     };
     use std::collections::VecDeque;
@@ -378,8 +424,13 @@ mod tests {
     // real credentials, Keychain access, or wall-clock sleeps are used by these tests.
     #[derive(Clone, Default)]
     struct Scripted {
-        responses: Arc<Mutex<VecDeque<Response>>>,
+        responses: Arc<Mutex<VecDeque<ScriptedResponse>>>,
         requests: Arc<Mutex<Vec<Prepared>>>,
+    }
+    enum ScriptedResponse {
+        Response(Box<Response>),
+        Failure(HttpError),
+        Pending,
     }
     struct Reply {
         events: Events,
@@ -411,13 +462,26 @@ mod tests {
                 .unwrap()
                 .pop_front()
                 .expect("unexpected extra request");
+            let url = request.url.clone();
+            self.requests.lock().unwrap().push(request);
+            let response = match response {
+                ScriptedResponse::Response(response) => response,
+                other => {
+                    if let ScriptedResponse::Failure(error) = other {
+                        events(Event::Failed(error));
+                    }
+                    return Arc::new(Reply {
+                        events,
+                        body: Mutex::new(None),
+                    });
+                }
+            };
             let head = Head {
                 status: response.status,
                 headers: response.headers,
-                url: request.url.clone(),
+                url,
                 expected_length: Some(response.body.len() as u64),
             };
-            self.requests.lock().unwrap().push(request);
             let reply = Arc::new(Reply {
                 events: events.clone(),
                 body: Mutex::new(Some(response.body)),
@@ -428,7 +492,12 @@ mod tests {
     }
     fn fixture_client(responses: Vec<Response>) -> (Rc<Client>, Scripted) {
         let scripted = Scripted {
-            responses: Arc::new(Mutex::new(responses.into())),
+            responses: Arc::new(Mutex::new(
+                responses
+                    .into_iter()
+                    .map(|response| ScriptedResponse::Response(Box::new(response)))
+                    .collect(),
+            )),
             ..Default::default()
         };
         let mut client = Client::new(Credential {
@@ -518,5 +587,155 @@ mod tests {
         let (client, wire) = fixture_client(vec![Response::new(401, vec![], b"{}".to_vec())]);
         assert_eq!(ready(client.get("/user")), Err(Error::Auth));
         assert_eq!(wire.requests.lock().unwrap().len(), 1);
+    }
+
+    fn expiring_client(responses: Vec<ScriptedResponse>) -> (Rc<Client>, Scripted) {
+        let (client, wire) = fixture_client(vec![]);
+        *wire.responses.lock().unwrap() = responses.into();
+        let mut credential = client.credential.borrow_mut();
+        credential.expires_at = Some(0);
+        credential.refresh_token = Some("synthetic-refresh-token".into());
+        drop(credential);
+        (client, wire)
+    }
+    fn oauth_response(status: u16, body: &[u8]) -> ScriptedResponse {
+        ScriptedResponse::Response(Box::new(Response::new(
+            status,
+            vec![("Content-Type".into(), "application/json".into())],
+            body.to_vec(),
+        )))
+    }
+    fn rotated_token() -> ScriptedResponse {
+        oauth_response(200, br#"{"access_token":"synthetic-new-token","refresh_token":"synthetic-new-refresh","token_type":"bearer","expires_in":28800}"#)
+    }
+    #[test]
+    fn offline_token_refresh_recovers_on_the_same_client() {
+        let (client, wire) = expiring_client(vec![
+            ScriptedResponse::Failure(HttpError::Connect),
+            rotated_token(),
+            oauth_response(200, br#"{"workflow_runs":[]}"#),
+        ]);
+        let saved = RefCell::new(None);
+        let save = |credential| {
+            *saved.borrow_mut() = Some(credential);
+            std::future::ready(Ok(()))
+        };
+        assert_eq!(
+            ready(client.refresh_credential(|| 100, save)),
+            Err(Error::Network)
+        );
+        // All other repositories share the cooldown instead of sending another 54
+        // refresh requests while offline. The error stays a network error, not Auth.
+        for _ in 0..54 {
+            assert_eq!(
+                ready(client.refresh_credential(|| 129, save)),
+                Err(Error::Network)
+            );
+        }
+        assert_eq!(wire.requests.lock().unwrap().len(), 1);
+        assert!(saved.borrow().is_none());
+        assert_eq!(ready(client.refresh_credential(|| 130, save)), Ok(()));
+        assert_eq!(
+            saved.borrow().as_ref().unwrap().access_token,
+            "synthetic-new-token"
+        );
+        assert_eq!(
+            ready(client.get("/repos/fixture/repo/actions/runs")).unwrap(),
+            json!({"workflow_runs":[]})
+        );
+        let requests = wire.requests.lock().unwrap();
+        assert_eq!(requests.len(), 3);
+        assert!(
+            requests[2]
+                .headers
+                .iter()
+                .any(|(k, v)| k.eq_ignore_ascii_case("authorization")
+                    && v == "Bearer synthetic-new-token")
+        );
+    }
+    #[test]
+    fn server_errors_do_not_permanently_reject_a_refresh_token() {
+        for failure in [
+            oauth_response(503, b"synthetic unavailable response"),
+            oauth_response(200, br#"{"error":"temporarily_unavailable"}"#),
+            oauth_response(200, b"synthetic malformed response"),
+        ] {
+            let (client, wire) = expiring_client(vec![failure, rotated_token()]);
+            assert_eq!(
+                ready(client.refresh_credential(|| 100, |_| async { Ok(()) })),
+                Err(Error::Invalid)
+            );
+            assert_eq!(
+                ready(client.refresh_credential(|| 130, |_| async { Ok(()) })),
+                Ok(())
+            );
+            assert_eq!(wire.requests.lock().unwrap().len(), 2);
+        }
+    }
+    #[test]
+    fn rejected_refresh_tokens_require_sign_in_without_replaying() {
+        for body in [
+            br#"{"error":"bad_refresh_token"}"#.as_slice(),
+            br#"{"error":"invalid_grant"}"#.as_slice(),
+        ] {
+            let (client, wire) = expiring_client(vec![oauth_response(200, body)]);
+            for now in [100, 130, 1_000_000] {
+                assert_eq!(
+                    ready(client.refresh_credential(|| now, |_| async { Ok(()) })),
+                    Err(Error::Auth)
+                );
+            }
+            assert_eq!(wire.requests.lock().unwrap().len(), 1);
+        }
+    }
+    #[test]
+    fn canceling_refresh_does_not_latch_an_authentication_failure() {
+        use std::future::Future;
+        let (client, wire) = expiring_client(vec![ScriptedResponse::Pending, rotated_token()]);
+        {
+            let mut pending =
+                std::pin::pin!(client.refresh_credential(|| 100, |_| async { Ok(()) }));
+            let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+            assert!(pending.as_mut().poll(&mut context).is_pending());
+        }
+        assert_eq!(
+            ready(client.refresh_credential(|| 130, |_| async { Ok(()) })),
+            Ok(())
+        );
+        assert_eq!(wire.requests.lock().unwrap().len(), 2);
+    }
+    #[test]
+    fn keychain_failure_or_cancellation_keeps_rotated_credentials() {
+        use std::future::Future;
+        for cancel in [false, true] {
+            let (client, wire) = expiring_client(vec![rotated_token()]);
+            if cancel {
+                let mut pending =
+                    std::pin::pin!(client.refresh_credential(|| 100, |_| std::future::pending()));
+                let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+                assert!(pending.as_mut().poll(&mut context).is_pending());
+            } else {
+                assert_eq!(
+                    ready(client.refresh_credential(|| 100, |_| async { Err(Error::Keychain) })),
+                    Err(Error::Keychain)
+                );
+            }
+            assert_eq!(
+                client.credential.borrow().access_token,
+                "synthetic-new-token"
+            );
+            assert_eq!(
+                client.credential.borrow().refresh_token.as_deref(),
+                Some("synthetic-new-refresh")
+            );
+            assert_eq!(
+                ready(
+                    client
+                        .refresh_credential(auth::now, |_| async { panic!("unnecessary refresh") })
+                ),
+                Ok(())
+            );
+            assert_eq!(wire.requests.lock().unwrap().len(), 1);
+        }
     }
 }
