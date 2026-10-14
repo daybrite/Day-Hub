@@ -82,6 +82,7 @@ fn duration(value: &Value) -> u64 {
     }
 }
 pub fn monitor_run(value: &Value) -> Run {
+    let elapsed = duration(value);
     Run {
         path: url::Url::parse(&text(value, "html_url"))
             .ok()
@@ -94,7 +95,11 @@ pub fn monitor_run(value: &Value) -> Run {
             .as_u64()
             .and_then(|attempt| u32::try_from(attempt).ok())
             .filter(|attempt| *attempt > 0),
-        duration: res::str::duration_seconds(duration(value).to_string()).format(),
+        duration: res::str::duration_hours_minutes(
+            format!("{:02}", elapsed / 3600),
+            format!("{:02}", elapsed / 60 % 60),
+        )
+        .format(),
     }
 }
 pub fn hidden_filter_menu(hub: Hub) -> MenuEntry {
@@ -844,9 +849,9 @@ mod tests {
                 .filter(|c| !matches!(c, '\u{2068}' | '\u{2069}'))
                 .collect();
             let expected_label = match expected {
-                0 => "Passed · Fixture workflow · 0 s".to_string(),
-                1 => "Passed · Fixture workflow · 0 s · 1 rerun".to_string(),
-                n => format!("Passed · Fixture workflow · 0 s · {n} reruns"),
+                0 => "Passed · Fixture workflow · 00:00".to_string(),
+                1 => "Passed · Fixture workflow · 00:00 · 1 rerun".to_string(),
+                n => format!("Passed · Fixture workflow · 00:00 · {n} reruns"),
             };
             assert_eq!(label, expected_label);
         }

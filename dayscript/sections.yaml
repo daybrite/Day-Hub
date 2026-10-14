@@ -1,6 +1,8 @@
 # Synthetic account fixture. Collapsing a section preserves the selected detail route.
 flow:
   - wait_for: { id: nav-sections }
+  # CI starts this flow in a fresh app, with Account covering the sidebar on iPhone.
+  - nav_back: { native: true, only_on: [ios] }
   - wait_for: { id: "sidebar:header:owner:fixture-org" }
   - navigate: { route: "repo:fixture-org~day" }
   - expand: { id: nav-sections, row: "sidebar:header:owner:fixture-org", expanded: false }
