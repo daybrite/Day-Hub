@@ -560,31 +560,3 @@ pub const OVERVIEW: &str = r#"query Overview($owner:String!,$name:String!) { rep
  repositoryTopics(first:20) { nodes { topic { name } } }
  defaultBranchRef { name target { ... on Commit { history(first:100) { totalCount nodes { oid committedDate additions deletions messageHeadline author { name } } } } } }
  } rateLimit { cost remaining resetAt } }"#;
-
-pub fn migrate_preferences() {
-    #[cfg(target_os = "macos")]
-    {
-        use objc2_foundation::{NSString, NSUserDefaults};
-        let defaults = NSUserDefaults::standardUserDefaults();
-        if let Some(old) =
-            defaults.persistentDomainForName(&NSString::from_str("dev.daybrite.hublights"))
-        {
-            for key in [
-                "repositories",
-                "updateInterval",
-                "statusBadgeCount",
-                "paused",
-                "grid.rows",
-                "grid.columnWidth",
-                "grid.maxWidth",
-            ] {
-                if !day::prefs::contains(key)
-                    && let Some(value) = old.objectForKey(&NSString::from_str(key))
-                    && let Some(value) = value.downcast_ref::<NSString>()
-                {
-                    day::prefs::set(key, &value.to_string());
-                }
-            }
-        }
-    }
-}

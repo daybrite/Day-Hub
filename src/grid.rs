@@ -4,6 +4,12 @@ use day::StatusImage;
 use day::prelude::*;
 
 const SCALE: u32 = 2;
+/// Runs per column.
+pub const ROWS: std::ops::RangeInclusive<u32> = 1..=6;
+/// Column width in points.
+pub const COLUMN_WIDTH: std::ops::RangeInclusive<u32> = 2..=10;
+/// Maximum grid width in points.
+pub const MAX_WIDTH: std::ops::RangeInclusive<u32> = 80..=600;
 const HEIGHT: u32 = 18 * SCALE;
 const GAP: u32 = 3 * SCALE;
 const ERROR: u32 = 0xDE68CC;
@@ -29,9 +35,9 @@ impl Default for Options {
 
 impl Options {
     pub fn valid(self) -> bool {
-        (1..=6).contains(&self.rows)
-            && (2..=10).contains(&self.column_width)
-            && (80..=600).contains(&self.max_width)
+        ROWS.contains(&self.rows)
+            && COLUMN_WIDTH.contains(&self.column_width)
+            && MAX_WIDTH.contains(&self.max_width)
     }
 }
 

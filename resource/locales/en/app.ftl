@@ -1,14 +1,5 @@
 app_title = Day Hub
-settings_title = Day Hub Settings
-repositories = Repositories
-repositories_help = Enter one owner/repository per line. Use --- to separate groups and # for comments. Public repositories only; no GitHub token is needed.
-refresh_settings = Monitoring
-interval = Update interval (seconds)
-history_count = Recent runs in repository menus
-save = Save and refresh
-saved = Settings saved.
 invalid_repository = Invalid repository on line { $line }. Use owner/repository.
-invalid_settings = Use an update interval from 15 to 3600 seconds and a history count from 1 to 10.
 save_failed = Settings could not be saved. Please try again.
 refresh = Refresh now
 pause = Pause automatic refresh
@@ -50,17 +41,16 @@ light_queued = 🟡
 light_cancelled = ⚪
 light_skipped = ⚪
 light_unknown = 🟤
-grid_settings = Visualization layout
-grid_rows = Runs per column (1–6)
-grid_column_width = Column width (2–10 points)
-grid_max_width = Maximum width (80–600 points)
+grid_layout = Layout
+grid_rows = Runs per column
+grid_column_width = Column width (points)
+grid_max_width = Maximum width (points)
 grid_help = Each column is a repository, with its newest run at the top. Gaps separate groups. Green: passed; red: failed; orange: running; yellow: queued; gray: cancelled or skipped; brown: no result. A pink outline marks a refresh error. Dark ticks indicate one, two, or three or more reruns. Small cells use a corner mark for any rerun. Open the menu for exact counts.
 grid_preview = Menu bar grid preview
 grid_preview_empty = Add repositories to see the grid preview.
 grid_preview_count = { $shown } columns shown · { $hidden } more in the menu
 grid_overflow = +{ $count }
 grid_tooltip = { $summary }. One column per repository; newest runs at the top. Dark marks indicate reruns. Click for details and exact counts.
-invalid_grid = Use 1–6 runs per column, a column width of 2–10 points, and a maximum width of 80–600 points.
 open_hub = Show Main Window
 file_menu = File
 account = GitHub account
@@ -150,7 +140,7 @@ callback_help = Day Hub currently signs in using a device code. Return to the ap
 callback_return = Open Day Hub
 callback_home = Day Hub home
 callback_missing = If Day Hub does not open, launch it from Applications.
-monitor_editor_help = Choose repositories from your account or enter owner/repository. Drag rows to arrange groups; repositories are sorted within each group using the selected order. Select a row and use its context menu to remove it. Choose Save and refresh to apply changes.
+monitor_editor_help = Choose repositories from your account or enter owner/repository. Drag rows to arrange groups; repositories are sorted within each group using the selected order. Select a row and use its context menu to remove it. Changes apply at once.
 add_repository = Add repository
 repository_address = owner/repository
 add_separator = Add separator
@@ -183,9 +173,20 @@ owner_repositories = Repositories owned by { $owner }
 owner_visibility_help = Right-click the owner or a repository to hide it. Use View → Show hidden repositories to reveal hidden entries, then right-click to unhide them. Visibility is saved locally for your account.
 sidebar_repository_count = { $visible } of { $total } repositories shown
 
-menu_bar_settings = Menu bar
 show_grid = Show menu bar visualization
 menu_repository_order = Repository order
 order_recency = Recency
 order_alphabetical = Alphabetical
 remove_selected_row = Remove selected row
+
+# Settings groups and rows (https://daybrite.dev/docs/settings/)
+settings_refresh = Refresh
+refresh_minutes = Refresh interval (minutes)
+history_count = Recent runs in repository menus
+settings_grid = Menu bar grid
+monitored_count = { $count ->
+    [one] { $count } repository monitored
+   *[other] { $count } repositories monitored
+    }
+account_user = GitHub user
+not_signed_in = Not signed in

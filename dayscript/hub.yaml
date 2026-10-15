@@ -1,5 +1,5 @@
 # Run with DAY_HUB_FIXTURE=1. Synthetic account data; no OAuth, Keychain reads or network.
-# Settings changes stay in the draft: this flow never saves the user's monitoring preferences.
+# Fixture mode keeps every preference in memory: this flow never changes the user's list.
 flow:
   - wait_for: { id: hub-nav }
   - assert_text: { id: github-account, text: "Signed in as fixture-user" }
@@ -14,13 +14,13 @@ flow:
   - wait_for: { id: run-jobs }
   - scroll_to: { id: run-jobs }
   - screenshot: { name: repository-actions }
-  - menu: { key: day-preferences }
+  - navigate: { route: settings/repositories }
   - wait_for: { id: monitor-rows }
   - input: { id: known-repository-search, text: "fixture-org/day" }
-  - scroll_to: { id: known-repositories }
+  - scroll_to: { id: known-repositories, only_on: [ios, android, harmony, web] }
   - tap: { id: known-add-1 }
   - assert_missing: { id: known-add-1 }
-  - scroll_to: { id: monitor-rows }
+  - scroll_to: { id: monitor-rows, only_on: [ios, android, harmony, web] }
   - context_menu: { id: monitor-row-fixture-org~day, item_id: monitor-remove }
   - assert_missing: { id: monitor-row-fixture-org~day }
   - input: { id: monitor-input, text: "fixture/../invalid" }
@@ -30,10 +30,10 @@ flow:
   - tap: { id: monitor-add }
   - tap: { id: monitor-separator }
   - reorder: { id: monitor-rows, from: 1, to: 2 }
-  - scroll_to: { id: monitor-rows }
+  - scroll_to: { id: monitor-rows, only_on: [ios, android, harmony, web] }
   - context_menu: { id: monitor-row-separator-1, item_id: monitor-remove }
   - assert_missing: { id: monitor-row-separator-1 }
-  - scroll_to: { id: monitor-rows }
+  - scroll_to: { id: monitor-rows, only_on: [ios, android, harmony, web] }
   - select: { id: monitor-rows, index: 2 }
   - tap: { id: monitor-remove-selected }
   - assert_missing: { id: monitor-row-fixture~new }

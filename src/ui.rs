@@ -6,6 +6,7 @@ use crate::{
 };
 use day::prelude::*;
 use day_piece_charts::{bar, chart, value};
+use day_piece_settings::Prefs;
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -15,25 +16,6 @@ pub fn show_main() {
         window.focus();
     } else {
         day::open_new_window();
-    }
-}
-pub fn desktop_settings() -> bool {
-    cfg!(not(any(
-        target_os = "ios",
-        target_os = "android",
-        target_env = "ohos",
-        target_arch = "wasm32"
-    )))
-}
-
-pub fn show_settings() {
-    if desktop_settings() {
-        day::open_preferences();
-        return;
-    }
-    show_main();
-    if let Some(hub) = crate::hub::current() {
-        hub.selected.set("settings".into());
     }
 }
 pub fn error_text(error: &Error) -> String {
@@ -218,22 +200,24 @@ fn sort_repositories(repos: &mut [Repository], order: usize) {
         .then_with(|| a.full_name.cmp(&b.full_name))
     });
 }
-pub fn window(hub: Hub) -> impl Piece {
+pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
+    let destination = prefs.clone();
     let navigation = nav(hub.selected)
         .style(NavStyle::Sidebar)
         .collapsed_sections(hub.collapsed_sections)
         .on_section_expansion(move |_, _| hub.save_collapsed_sections())
         .item("account".to_string(), res::str::account(), move || {
             account(hub)
-        });
-    let navigation = if desktop_settings() {
-        navigation
-    } else {
-        navigation.item("settings".to_string(), res::str::settings(), move || {
-            crate::settings(hub.monitor)
         })
-    };
-    let navigation = navigation
+        // Desktop reaches Settings through its menu and window; without a menu bar the
+        // settings page is a sidebar section (https://daybrite.dev/docs/settings/).
+        .items(
+            {
+                let prefs = prefs.clone();
+                move || prefs.nav_keys(day_piece_settings::NAV_KEY.to_string())
+            },
+            move |key: &String| prefs.nav_item(key.clone()),
+        )
         .items(
             move || rows(hub),
             move |r| {
@@ -252,6 +236,9 @@ pub fn window(hub: Hub) -> impl Piece {
             },
         )
         .destination(move |key: &String| {
+            if key == day_piece_settings::NAV_KEY {
+                return destination.page();
+            }
             repository_page(
                 hub,
                 key.split_once(':')
@@ -261,7 +248,7 @@ pub fn window(hub: Hub) -> impl Piece {
             )
         })
         .retain_selection_when(move |key| {
-            if key == "account" || key == "settings" {
+            if key == "account" || key == day_piece_settings::NAV_KEY {
                 return true;
             }
             key.split_once(':')
@@ -412,7 +399,9 @@ fn account(hub: Hub) -> impl Piece {
             }),
             label(res::str::favorites_help()),
             label(res::str::monitor_help()),
-            button(res::str::settings()).action(show_settings),
+            button(res::str::settings()).action(|| {
+                day_piece_settings::open();
+            }),
         ))
         .spacing(20.0)
         .padding(28.0),
@@ -462,19 +451,14 @@ fn repository_page(hub: Hub, name: String) -> AnyPiece {
                         .with(|projects| projects.iter().any(|p| p.repo == monitor_name))
                 })
                 .action(move || {
-                    let mut input = hub.monitor.repositories.get();
-                    if !input.ends_with('\n') {
+                    // Appending to the saved list applies it: the monitor watches the setting.
+                    let mut input = crate::REPOSITORIES.get_untracked();
+                    if !input.is_empty() && !input.ends_with('\n') {
                         input.push('\n');
                     }
                     input.push_str(&name);
-                    if let Ok(projects) = crate::model::parse_projects(&input) {
-                        day::prefs::set("repositories", &input);
-                        hub.monitor.repositories.set(input);
-                        hub.monitor.projects.set(crate::model::reconcile(
-                            projects,
-                            &hub.monitor.projects.get(),
-                        ));
-                        hub.monitor.refresh(true);
+                    if crate::model::parse_projects(&input).is_ok() {
+                        crate::REPOSITORIES.set(input);
                     }
                 }),
         ))

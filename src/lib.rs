@@ -1,6 +1,8 @@
 //! Day Hub: a native GitHub workspace and compact Actions menu bar monitor.
 use crate::clock::Instant;
 use day::prelude::*;
+use day_piece_settings::prelude::*;
+use std::ops::RangeInclusive;
 use std::time::Duration;
 
 mod api;
@@ -19,22 +21,52 @@ day::day_start!(options: main_window(), root);
 
 pub fn main_window() -> day::WindowOptions {
     day::WindowOptions {
+        locales: Some((res::locales::DEFAULT, res::locales::CATALOG)),
         title_fn: Some(|| res::str::app_title().format()),
         size: Size::new(1180.0, 800.0),
         min_size: Some(Size::new(840.0, 600.0)),
-        ..window()
-    }
-}
-
-pub fn window() -> day::WindowOptions {
-    day::WindowOptions {
-        locales: Some((res::locales::DEFAULT, res::locales::CATALOG)),
-        title_fn: Some(|| res::str::settings_title().format()),
-        size: Size::new(640.0, 620.0),
-        min_size: Some(Size::new(500.0, 500.0)),
         version: Some(env!("CARGO_PKG_VERSION").into()),
         ..Default::default()
     }
+}
+
+/// The GitHub repository the About links to.
+const SOURCE_URL: &str = "https://github.com/daybrite/Day-Hub";
+
+// Settings (https://daybrite.dev/docs/settings/): typed preferences the monitor reads
+// reactively. Every write persists and applies at once; there is no draft and no Save button.
+/// Monitored repositories: one `owner/repository` per line, `---` between groups.
+pub static REPOSITORIES: Pref<String> = Pref::new("hub.repositories", String::new);
+/// Minutes between automatic refreshes.
+pub static REFRESH_MINUTES: Pref<i64> = Pref::new("hub.refresh_minutes", || 1);
+pub const REFRESH_RANGE: RangeInclusive<i64> = 1..=60;
+/// Recent runs listed per repository in the status menu, and lights in its title.
+pub static BADGE_HISTORY: Pref<i64> = Pref::new("hub.badge_history", || 3);
+pub const BADGE_RANGE: RangeInclusive<i64> = 1..=10;
+/// Whether the status item shows the grid image or only the app title.
+pub static GRID_VISIBLE: Pref<bool> = Pref::new("hub.grid.visible", || true);
+/// The order of repositories inside each grid group.
+pub static GRID_ORDER: Pref<RepositoryOrder> =
+    Pref::new("hub.grid.order", || RepositoryOrder::Recency);
+pub static GRID_ROWS: Pref<i64> = Pref::new("hub.grid.rows", || 3);
+pub static GRID_COLUMN_WIDTH: Pref<i64> = Pref::new("hub.grid.column_width", || 6);
+pub static GRID_MAX_WIDTH: Pref<i64> = Pref::new("hub.grid.max_width", || 480);
+/// Automatic refresh paused from the status menu.
+static PAUSED: Pref<bool> = Pref::new("hub.paused", || false);
+
+/// The grid layout from the three steppers (tracked read). `grid::render` falls back to the
+/// defaults should a stored value ever fall outside the ranges the steppers enforce.
+fn grid_options() -> grid::Options {
+    let dim = |v: i64| u32::try_from(v).unwrap_or(0);
+    grid::Options {
+        rows: dim(GRID_ROWS.get()),
+        column_width: dim(GRID_COLUMN_WIDTH.get()),
+        max_width: dim(GRID_MAX_WIDTH.get()),
+    }
+}
+
+fn stepper_range(range: &RangeInclusive<u32>) -> RangeInclusive<i64> {
+    i64::from(*range.start())..=i64::from(*range.end())
 }
 
 // Monitoring is intentionally app-wide: menu items, the first window and reopened settings
@@ -42,14 +74,7 @@ pub fn window() -> day::WindowOptions {
 #[derive(Clone, Copy)]
 struct App {
     projects: Signal<Vec<Project>>,
-    repositories: Signal<String>,
-    interval: Signal<u64>,
-    history: Signal<usize>,
-    grid_options: Signal<grid::Options>,
-    repository_order: Signal<RepositoryOrder>,
-    show_grid: Signal<bool>,
     grid: day::reactive::Memo<grid::Grid>,
-    paused: Signal<bool>,
     progress: Signal<Option<(usize, usize)>>,
     checked: Signal<Option<Instant>>,
     clock: Signal<Instant>,
@@ -60,46 +85,59 @@ struct App {
 
 impl App {
     fn new() -> Self {
-        let repositories = if hub::is_fixture() {
+        if hub::is_fixture() {
             // Synthetic monitor configuration: UI checks do not depend on the user's list.
-            "fixture/one\n---\nfixture/two".to_string()
-        } else {
-            day::prefs::get("repositories").unwrap_or_default()
-        };
-        let projects = Signal::global(model::parse_projects(&repositories).unwrap_or_default());
-        let grid_options = Signal::global(grid::Options {
-            rows: saved_number("grid.rows", 3, 1, 6) as u32,
-            column_width: saved_number("grid.columnWidth", 6, 2, 10) as u32,
-            max_width: saved_number("grid.maxWidth", 480, 80, 600) as u32,
-        });
-        let repository_order = Signal::global(RepositoryOrder::from_key(
-            &day::prefs::get("grid.repositoryOrder").unwrap_or_default(),
-        ));
-        let grid = day::reactive::Scope::root().enter(|| {
+            REPOSITORIES.set("fixture/one\n---\nfixture/two".to_string());
+        }
+        let projects = Signal::global(
+            model::parse_projects(&REPOSITORIES.get_untracked()).unwrap_or_default(),
+        );
+        let root = day::reactive::Scope::root();
+        let grid = root.enter(|| {
             day::reactive::Memo::new(move || {
                 grid::render(
-                    &model::ordered(projects.get(), repository_order.get()),
-                    grid_options.get(),
+                    &model::ordered(projects.get(), GRID_ORDER.get()),
+                    grid_options(),
                 )
             })
         });
-        Self {
+        let app = Self {
             projects,
-            grid_options,
-            repository_order,
-            show_grid: Signal::global(day::prefs::get("grid.visible").as_deref() != Some("false")),
             grid,
-            repositories: Signal::global(repositories),
-            interval: Signal::global(saved_number("updateInterval", 60, 15, 3600)),
-            history: Signal::global(saved_number("statusBadgeCount", 3, 1, 10) as usize),
-            paused: Signal::global(day::prefs::get("paused").as_deref() == Some("true")),
             progress: Signal::global(None),
             checked: Signal::global(None),
             clock: Signal::global(Instant::now()),
             next: Signal::global(Instant::now()),
             backoff: Signal::global(None),
             task: Signal::global(None),
-        }
+        };
+        // Settings apply live: an edited list keeps the results it already has and is fetched
+        // on the timer's next tick; a new interval moves the next refresh without forcing one.
+        root.enter(|| {
+            REPOSITORIES.watch(move |text| {
+                app.cancel();
+                let projects = model::parse_projects(text).unwrap_or_default();
+                app.projects
+                    .set(model::reconcile(projects, &app.projects.get()));
+                app.next.set(Instant::now());
+            });
+            REFRESH_MINUTES.watch(move |_| {
+                let now = Instant::now();
+                let due = app
+                    .checked
+                    .get_untracked()
+                    .map_or(now, |at| at + app.interval());
+                app.next.set(due.max(now));
+            });
+        });
+        app
+    }
+
+    fn interval(self) -> Duration {
+        let minutes = REFRESH_MINUTES
+            .get_untracked()
+            .clamp(*REFRESH_RANGE.start(), *REFRESH_RANGE.end());
+        Duration::from_secs(minutes as u64 * 60)
     }
 
     fn refresh(self, force: bool) {
@@ -170,8 +208,7 @@ impl App {
                 }
             }
             self.checked.set(Some(Instant::now()));
-            self.next
-                .set(Instant::now() + Duration::from_secs(self.interval.get()));
+            self.next.set(Instant::now() + self.interval());
             self.progress.set(None);
             day::info!(
                 "Refresh finished in {} ms: {succeeded} succeeded, {failed} failed, {} deferred",
@@ -219,32 +256,23 @@ impl App {
     }
 }
 
-fn saved_number(key: &str, default: u64, min: u64, max: u64) -> u64 {
-    day::prefs::get(key)
-        .and_then(|s| s.parse::<u64>().ok())
-        .filter(|v| (min..=max).contains(v))
-        .unwrap_or(default)
-}
-
 pub fn root() -> impl Piece {
     // html5ever's debug tracing logs every tokenizer transition. Keep normal monitoring
     // quiet while preserving an explicit diagnostic level requested by the developer.
     if std::env::var_os("DAY_LOG").is_none() {
         day::set_log_level(day::log::LevelFilter::Info);
     }
-    hub::migrate_preferences();
+    if hub::is_fixture() {
+        // Scripted runs never touch the user's preferences: every setting lives in memory.
+        day_piece_settings::install_store(day_piece_settings::MemoryStore::default());
+    }
     let app = App::new();
     let hub = hub::Hub::new(app);
+    let prefs = settings(app, hub);
     day::set_dock_visible(true);
-    day::register_new_window(move || ui::window(hub));
-    if ui::desktop_settings() {
-        day::register_preferences_with(
-            day::WindowOptions {
-                title: res::str::settings_title().format(),
-                ..window()
-            },
-            move || settings(app),
-        );
+    {
+        let prefs = prefs.clone();
+        day::register_new_window(move || ui::window(hub, prefs.clone()));
     }
     day::set_keep_running(day::KeepRunning::Always);
     day::on_open_url(|url| {
@@ -263,7 +291,7 @@ pub fn root() -> impl Piece {
                     menu_item(res::str::open_hub().format()).action(ui::show_main),
                     menu_role(MenuRole::CloseWindow),
                     menu_separator(),
-                    menu_role(MenuRole::Preferences).action(ui::show_settings),
+                    menu_role(MenuRole::Preferences),
                     menu_role(MenuRole::Quit),
                 ],
             )
@@ -279,7 +307,7 @@ pub fn root() -> impl Piece {
     let timer = day::task(async move {
         let mut ticks = 0;
         loop {
-            if !hub::is_fixture() && !app.paused.get() && Instant::now() >= app.next.get() {
+            if !hub::is_fixture() && !PAUSED.get_untracked() && Instant::now() >= app.next.get() {
                 app.refresh(false);
             }
             day::sleep(1000).await;
@@ -293,7 +321,159 @@ pub fn root() -> impl Piece {
         timer.abort();
         app.cancel();
     });
-    ui::window(hub)
+    ui::window(hub, prefs)
+}
+
+/// Declare and install Settings and About. On desktop this registers the app menu's Settings…
+/// and About items and their windows; on the phones and the web the handle's `page()` is the
+/// sidebar's Settings section (`ui::window`).
+fn settings(app: App, hub: hub::Hub) -> Prefs {
+    let order = rows::choice(
+        &GRID_ORDER,
+        res::str::menu_repository_order(),
+        [
+            (RepositoryOrder::Recency, res::str::order_recency()),
+            (
+                RepositoryOrder::Alphabetical,
+                res::str::order_alphabetical(),
+            ),
+        ],
+    )
+    .id("menu-repository-order");
+    // The session is live as soon as a credential is restored (`api`); the fixture only
+    // sets the login. Either marks the account as signed in.
+    let signed_in = move || hub.api.get().is_some() || !hub.login.get().is_empty();
+    Preferences::new()
+        .about(About::from_manifest().link(day::tr("day-about-source"), SOURCE_URL))
+        .group(general_group(res::locales::ALL))
+        .group(
+            Group::new("refresh", res::str::settings_refresh())
+                .icon(Symbol::Refresh)
+                .row(
+                    rows::stepper(&REFRESH_MINUTES, res::str::refresh_minutes(), REFRESH_RANGE)
+                        .id("interval"),
+                )
+                .row(
+                    rows::stepper(&BADGE_HISTORY, res::str::history_count(), BADGE_RANGE)
+                        .id("history-count"),
+                ),
+        )
+        .group(
+            Group::new("grid", res::str::settings_grid())
+                .icon(res::vectors::prefs_grid)
+                .section(
+                    Section::new()
+                        .row(rows::toggle(&GRID_VISIBLE, res::str::show_grid()).id("show-grid"))
+                        .row(order),
+                )
+                .section(
+                    Section::new()
+                        .title(res::str::grid_layout())
+                        .footer(res::str::grid_help())
+                        .row(
+                            rows::stepper(
+                                &GRID_ROWS,
+                                res::str::grid_rows(),
+                                stepper_range(&grid::ROWS),
+                            )
+                            .id("grid-rows"),
+                        )
+                        .row(
+                            rows::stepper(
+                                &GRID_COLUMN_WIDTH,
+                                res::str::grid_column_width(),
+                                stepper_range(&grid::COLUMN_WIDTH),
+                            )
+                            .id("grid-column-width"),
+                        )
+                        .row(
+                            rows::stepper(
+                                &GRID_MAX_WIDTH,
+                                res::str::grid_max_width(),
+                                stepper_range(&grid::MAX_WIDTH),
+                            )
+                            .id("grid-max-width"),
+                        )
+                        .row(rows::custom(move || grid_preview(app))),
+                ),
+        )
+        .group(
+            Group::new("repositories", res::str::monitored_repositories())
+                .icon(res::vectors::owner_group)
+                .subtitle(move || {
+                    res::str::monitored_count(app.projects.with(|p| p.len()) as i64).format()
+                })
+                .custom(editor::repositories),
+        )
+        .group(
+            // "github", not "account": the main window's Account section already owns that
+            // route segment, and `settings/account` would land there.
+            Group::new("github", res::str::account())
+                .icon(res::vectors::prefs_account)
+                .row(
+                    rows::info(res::str::account_user(), move || {
+                        let login = hub.login.get();
+                        if login.is_empty() {
+                            res::str::not_signed_in().format()
+                        } else {
+                            login
+                        }
+                    })
+                    .id("account-user"),
+                )
+                .row(
+                    rows::action(
+                        move || {
+                            if signed_in() {
+                                res::str::sign_out().format()
+                            } else {
+                                res::str::sign_in().format()
+                            }
+                        },
+                        move || {
+                            if hub.api.get_untracked().is_some()
+                                || !hub.login.get_untracked().is_empty()
+                            {
+                                hub.sign_out();
+                            } else {
+                                // The device code shows on the account page; bring it forward.
+                                ui::show_main();
+                                hub.selected.set("account".into());
+                                hub.sign_in();
+                            }
+                        },
+                    )
+                    .id("account-action"),
+                ),
+        )
+        .window_size(640.0, 800.0)
+        .install()
+}
+
+/// The menu bar grid as it is drawn right now, with the shown/overflow count under it.
+fn grid_preview(app: App) -> impl Piece {
+    column((
+        canvas(move |draw, size| app.grid.with(|grid| grid.draw(draw, size)))
+            .height(24.0)
+            .grow_w()
+            .id("grid-preview")
+            .a11y(|a| a.label(res::str::grid_preview())),
+        label(move || {
+            let grid = app.grid.get();
+            if grid.image.is_none() {
+                res::str::grid_preview_empty().format()
+            } else {
+                let shown = app.projects.with(|p| p.len().saturating_sub(grid.hidden));
+                res::str::grid_preview_count(grid.hidden as i64, shown as i64).format()
+            }
+        })
+        .font(Font::Footnote)
+        .secondary()
+        .id("grid-preview-count"),
+    ))
+    .spacing(8.0)
+    .align(HAlign::Leading)
+    .grow_w()
 }
 
 fn status_label(status: Status) -> String {
@@ -331,10 +511,6 @@ fn error_text(error: &FetchError) -> String {
     }
 }
 
-fn show_settings() {
-    ui::show_settings();
-}
-
 fn open_github_page(url: &str) {
     day::log::info!("Opening GitHub page from status menu: {url}");
     open_url(url);
@@ -355,7 +531,8 @@ fn run_menu_label(run: &model::Run) -> String {
 }
 
 fn status(app: App) -> StatusItem {
-    let projects = model::ordered(app.projects.get(), app.repository_order.get());
+    let projects = model::ordered(app.projects.get(), GRID_ORDER.get());
+    let history = usize::try_from(BADGE_HISTORY.get()).unwrap_or(0);
     let mut menu = vec![
         menu_item(res::str::open_hub().format()).action(ui::show_main),
         menu_item(app.summary()).enabled(false),
@@ -378,14 +555,14 @@ fn status(app: App) -> StatusItem {
         if project.runs.is_empty() {
             runs.push(menu_item(res::str::no_runs().format()).enabled(false));
         }
-        for run in project.runs.iter().take(app.history.get()) {
+        for run in project.runs.iter().take(history) {
             let url = format!("https://github.com{}", run.path);
             runs.push(menu_item(run_menu_label(run)).action(move || open_github_page(&url)));
         }
         let history = project
             .runs
             .iter()
-            .take(app.history.get())
+            .take(history)
             .rev()
             .map(|r| light(r.status))
             .collect::<String>();
@@ -413,22 +590,20 @@ fn status(app: App) -> StatusItem {
             .action(move || app.refresh(true)),
         menu_item(res::str::pause().format())
             .id("pause")
-            .checked(app.paused.get())
-            .action(move || {
-                let paused = !app.paused.get();
-                app.paused.set(paused);
-                day::prefs::set("paused", if paused { "true" } else { "false" });
-            }),
+            .checked(PAUSED.get())
+            .action(|| PAUSED.set(!PAUSED.get_untracked())),
         menu_item(res::str::settings().format())
             .id("settings")
-            .action(show_settings),
+            .action(|| {
+                day_piece_settings::open();
+            }),
         menu_separator(),
         menu_role(MenuRole::Quit),
     ]);
     let item = StatusItem::new()
         .tooltip(res::str::grid_tooltip(app.summary()).format())
         .menu(menu);
-    if !app.show_grid.get() {
+    if !GRID_VISIBLE.get() {
         return item
             .title(res::str::app_title().format())
             .tooltip(app.summary());
@@ -444,174 +619,4 @@ fn status(app: App) -> StatusItem {
     } else {
         item.title(res::str::app_title().format())
     }
-}
-
-fn settings(app: App) -> impl Piece {
-    let repositories = Signal::new(app.repositories.get());
-    let interval = Signal::new(app.interval.get().to_string());
-    let history = Signal::new(app.history.get().to_string());
-    let show_grid = Signal::new(app.show_grid.get());
-    let repository_order = Signal::new(
-        RepositoryOrder::ALL
-            .iter()
-            .position(|order| *order == app.repository_order.get())
-            .unwrap_or(0),
-    );
-    let draft_order = move || {
-        RepositoryOrder::ALL
-            .get(repository_order.get())
-            .copied()
-            .unwrap_or_default()
-    };
-    let options = app.grid_options.get();
-    let rows = Signal::new(options.rows.to_string());
-    let column_width = Signal::new(options.column_width.to_string());
-    let max_width = Signal::new(options.max_width.to_string());
-    let message = Signal::new(String::new());
-    let draft_options = move || {
-        let options = grid::Options {
-            rows: rows.get().trim().parse().ok()?,
-            column_width: column_width.get().trim().parse().ok()?,
-            max_width: max_width.get().trim().parse().ok()?,
-        };
-        options.valid().then_some(options)
-    };
-    let preview = day::reactive::Memo::new(move || {
-        grid::render(
-            &model::ordered(
-                model::reconcile(
-                    model::parse_projects(&repositories.get()).unwrap_or_default(),
-                    &app.projects.get(),
-                ),
-                draft_order(),
-            ),
-            draft_options().unwrap_or(app.grid_options.get()),
-        )
-    });
-    scroll(
-        form((
-            section((
-                labeled(res::str::interval(), text_field(interval).id("interval")),
-                label(move || app.summary()).id("summary"),
-                label(move || app.update_text()).id("update-status"),
-            ))
-            .title(res::str::refresh_settings()),
-            section((
-                labeled(res::str::show_grid(), toggle(show_grid).id("show-grid")),
-                labeled(
-                    res::str::menu_repository_order(),
-                    picker(
-                        RepositoryOrder::ALL
-                            .iter()
-                            .map(|order| match order {
-                                RepositoryOrder::Recency => res::str::order_recency().format(),
-                                RepositoryOrder::Alphabetical => {
-                                    res::str::order_alphabetical().format()
-                                }
-                            })
-                            .collect::<Vec<_>>(),
-                        repository_order,
-                    )
-                    .menu()
-                    .id("menu-repository-order"),
-                ),
-                labeled(
-                    res::str::history_count(),
-                    text_field(history).id("history-count"),
-                ),
-            ))
-            .title(res::str::menu_bar_settings()),
-            section((
-                labeled(res::str::grid_rows(), text_field(rows).id("grid-rows")),
-                labeled(
-                    res::str::grid_column_width(),
-                    text_field(column_width).id("grid-column-width"),
-                ),
-                labeled(
-                    res::str::grid_max_width(),
-                    text_field(max_width).id("grid-max-width"),
-                ),
-                label(res::str::grid_help()),
-                canvas(move |draw, size| preview.with(|grid| grid.draw(draw, size)))
-                    .height(24.0)
-                    .grow_w()
-                    .id("grid-preview")
-                    .a11y(|a| a.label(res::str::grid_preview())),
-                label(move || {
-                    let grid = preview.get();
-                    if grid.image.is_none() {
-                        res::str::grid_preview_empty().format()
-                    } else {
-                        res::str::grid_preview_count(
-                            grid.hidden as i64,
-                            model::parse_projects(&repositories.get())
-                                .map(|p| p.len().saturating_sub(grid.hidden))
-                                .unwrap_or(0) as i64,
-                        )
-                        .format()
-                    }
-                })
-                .id("grid-preview-count"),
-            ))
-            .title(res::str::grid_settings()),
-            section((
-                label(res::str::monitor_editor_help()),
-                editor::repositories(repositories),
-            ))
-            .title(res::str::monitored_repositories()),
-            section((
-                button(res::str::save()).id("save").action(move || {
-                    let projects = match model::parse_projects(&repositories.get()) {
-                        Ok(projects) => projects,
-                        Err(line) => {
-                            message.set(res::str::invalid_repository(line.to_string()).format());
-                            return;
-                        }
-                    };
-                    let (Ok(seconds @ 15..=3600), Ok(count @ 1..=10)) = (
-                        interval.get().trim().parse::<u64>(),
-                        history.get().trim().parse::<usize>(),
-                    ) else {
-                        message.set(res::str::invalid_settings().format());
-                        return;
-                    };
-                    let Some(options) = draft_options() else {
-                        message.set(res::str::invalid_grid().format());
-                        return;
-                    };
-                    if !(day::prefs::set("repositories", &repositories.get())
-                        && day::prefs::set("updateInterval", &seconds.to_string())
-                        && day::prefs::set("statusBadgeCount", &count.to_string())
-                        && day::prefs::set("grid.rows", &options.rows.to_string())
-                        && day::prefs::set("grid.columnWidth", &options.column_width.to_string())
-                        && day::prefs::set("grid.maxWidth", &options.max_width.to_string())
-                        && day::prefs::set("grid.repositoryOrder", draft_order().key())
-                        && day::prefs::set(
-                            "grid.visible",
-                            if show_grid.get() { "true" } else { "false" },
-                        ))
-                    {
-                        message.set(res::str::save_failed().format());
-                        return;
-                    }
-                    app.cancel();
-                    app.projects
-                        .set(model::reconcile(projects, &app.projects.get()));
-                    app.repositories.set(repositories.get());
-                    app.interval.set(seconds);
-                    app.history.set(count);
-                    app.grid_options.set(options);
-                    app.repository_order.set(draft_order());
-                    app.show_grid.set(show_grid.get());
-                    app.next.set(Instant::now());
-                    message.set(res::str::saved().format());
-                    app.refresh(true);
-                }),
-                label(move || message.get()).id("settings-message"),
-            )),
-        ))
-        .padding(20.0),
-    )
-    .grow()
-    .id("settings-page")
 }

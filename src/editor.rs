@@ -1,6 +1,7 @@
 //! Ordered menu configuration. Separators are first-class draggable rows, not a text syntax
-//! users have to learn; the original text format remains the persistence/interchange format.
-use crate::{hub, model, res};
+//! users have to learn; the text format remains the persistence format (`REPOSITORIES`),
+//! and every edit saves at once.
+use crate::{REPOSITORIES, hub, model, res};
 use day::prelude::*;
 #[derive(Clone, Debug, PartialEq)]
 struct Entry {
@@ -38,19 +39,27 @@ fn move_row(rows: &mut Vec<Entry>, from: usize, to: usize) {
         rows.insert(to, row);
     }
 }
-pub fn repositories(draft: Signal<String>) -> impl Piece {
-    let rows = Signal::new(decode(&draft.get()));
+pub fn repositories() -> impl Piece {
+    let rows = Signal::new(decode(&REPOSITORIES.get_untracked()));
     let next = Signal::new(rows.with(|r| r.len()) as u64);
     let selected = Signal::new(None::<u64>);
     let input = Signal::new(String::new());
     let filter = Signal::new(String::new());
     let message = Signal::new(String::new());
+    // Two-way with the preference: every edit here saves; a write from elsewhere (the
+    // repository page's "Monitor in menu bar") re-reads the rows. Encoding is canonical, so
+    // the echo of our own write changes nothing.
     day::reactive::watch(
         move || rows.get(),
-        move |rows, _| {
-            draft.set(encode(rows));
-        },
+        move |rows, _| REPOSITORIES.set(encode(rows)),
     );
+    REPOSITORIES.watch(move |text| {
+        if rows.with(|r| encode(r) != *text) {
+            rows.set(decode(text));
+            next.set(rows.with(|r| r.len()) as u64);
+            selected.set(None);
+        }
+    });
     let remove = move |id: u64| {
         rows.update(|r| r.retain(|v| v.id != id));
         if selected.get() == Some(id) {
@@ -87,6 +96,9 @@ pub fn repositories(draft: Signal<String>) -> impl Piece {
         message.set(String::new());
     };
     column((
+        label(res::str::monitor_editor_help())
+            .font(Font::Footnote)
+            .secondary(),
         list(items(move || rows.get(), |r: &Entry| r.id), move |slot| {
             when(
                 move || slot.get().repository.is_some(),
@@ -207,6 +219,7 @@ pub fn repositories(draft: Signal<String>) -> impl Piece {
         .id("known-repositories"),
     ))
     .spacing(10.0)
+    .align(HAlign::Leading)
 }
 #[cfg(test)]
 mod tests {

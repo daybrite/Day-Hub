@@ -595,6 +595,7 @@ version = "0.5.1"
 dependencies = [
  "day-core",
  "day-pieces",
+ "day-reactive",
  "day-spec",
  "jni",
  "linkme",
@@ -691,6 +692,7 @@ version = "0.5.1"
 dependencies = [
  "day-core",
  "day-geometry",
+ "day-l10n",
  "day-spec",
  "getrandom 0.4.3",
  "log",
@@ -747,12 +749,12 @@ dependencies = [
  "day-dom",
  "day-part-http",
  "day-piece-charts",
+ "day-piece-settings",
  "graphql_client",
  "html5ever",
  "httpdate",
  "keyring",
  "oauth2",
- "objc2-foundation",
  "serde",
  "serde_json",
  "url",
@@ -859,6 +861,25 @@ dependencies = [
  "day-pieces",
  "day-reactive",
  "day-spec",
+]
+
+[[package]]
+name = "day-piece-settings"
+version = "0.5.1"
+dependencies = [
+ "cc",
+ "day-build",
+ "day-core",
+ "day-fluent",
+ "day-l10n",
+ "day-part-clipboard",
+ "day-part-prefs",
+ "day-pieces",
+ "day-reactive",
+ "day-spec",
+ "day-toolchain",
+ "linkme",
+ "log",
 ]
 
 [[package]]
@@ -4403,3 +4424,15 @@ dependencies = [
  "syn 3.0.6",
  "winnow",
 ]
+
+[[patch.unused]]
+name = "day-persistence"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-persistence-macros"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-sqlite-worker"
+version = "0.1.0"

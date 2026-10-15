@@ -134,31 +134,10 @@ pub fn reconcile(mut new: Vec<Project>, previous: &[Project]) -> Vec<Project> {
     new
 }
 
-/// Stable preference identifiers keep future picker additions independent of their position.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum RepositoryOrder {
-    #[default]
-    Recency,
-    Alphabetical,
-}
-
-impl RepositoryOrder {
-    pub const ALL: &[Self] = &[Self::Recency, Self::Alphabetical];
-
-    pub fn key(self) -> &'static str {
-        match self {
-            Self::Recency => "recency",
-            Self::Alphabetical => "alphabetical",
-        }
-    }
-
-    pub fn from_key(key: &str) -> Self {
-        Self::ALL
-            .iter()
-            .copied()
-            .find(|order| order.key() == key)
-            .unwrap_or_default()
-    }
+day_piece_settings::pref_enum! {
+    /// The order of repositories inside each grid group; stored under stable tags so future
+    /// additions never depend on a picker position.
+    pub enum RepositoryOrder { Recency = "recency", Alphabetical = "alphabetical" }
 }
 
 /// Keep explicit groups together, sorting inside each group. Missing/invalid timestamps
@@ -211,6 +190,7 @@ pub fn valid_run_path(path: &str, repo: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use day_piece_settings::PrefValue;
 
     #[test]
     fn groups_comments_and_duplicates() {
@@ -285,12 +265,9 @@ mod tests {
                 "fixture/newest"
             ]
         );
-        assert_eq!(
-            RepositoryOrder::from_key("unknown-future-order"),
-            RepositoryOrder::Recency
-        );
+        assert_eq!(RepositoryOrder::decode("unknown-future-order"), None);
         for order in RepositoryOrder::ALL {
-            assert_eq!(RepositoryOrder::from_key(order.key()), *order);
+            assert_eq!(RepositoryOrder::decode(order.tag()), Some(*order));
         }
     }
 

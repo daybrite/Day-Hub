@@ -1,9 +1,8 @@
 # Day Hub
 
-A native macOS GitHub workspace with a compact Actions status grid in the menu bar. Renamed
-from Day-HubLights; existing monitored repositories, groups, refresh interval and grid preferences
-are copied from `dev.daybrite.hublights` into `dev.daybrite.hub` on first use. The old settings
-remain intact. The repository list imported from the original HubLights is retained.
+A native macOS GitHub workspace with a compact Actions status grid in the menu bar. Settings
+live under the `hub.*` preference keys of `dev.daybrite.hub`; the app does not read an earlier
+HubLights configuration.
 
 ## Run
 
@@ -66,14 +65,18 @@ GitHub mutations are not implemented.
 
 ## Configure the menu bar
 
-Open **Settings** from the app or status menu on desktop, or the sidebar on mobile. Desktop
-settings open in a separate window; reopening Settings focuses the existing window and keeps its
-draft. On mobile, settings remain a navigation page. Add repositories from the searchable account
-list or type `owner/repository`. Drag rows to arrange groups. **Add separator** creates a draggable
-visual divider. Select rows normally and use the context menu's **Remove** action, or **Remove
-selected row**, to remove repositories or dividers. **Save and refresh** applies the draft.
-Closing Settings without saving discards that draft. The plain-text `repositories` preference remains
-compatible with `owner/repository` lines and `---` group separators.
+Open **Settings** from the app menu (**⌘,**), the status menu or the account page on desktop,
+or from the sidebar on mobile and the web. Desktop settings open in their own window with one
+page per group: **General** (appearance and language), **Refresh**, **Menu bar grid**,
+**Menu bar repositories** and **GitHub account**; on mobile the same groups are a navigation
+page. Every change saves and applies at once; there is no Save button and no draft. On the
+repositories page, add repositories from the searchable account list or type
+`owner/repository`. Drag rows to arrange groups. **Add separator** creates a draggable visual
+divider. Select rows normally and use the context menu's **Remove** action, or **Remove
+selected row**, to remove repositories or dividers. The list is stored as plain text under
+`hub.repositories`: `owner/repository` lines and `---` group separators. The repository page's
+**Monitor in menu bar** button appends to the same list. **About Day Hub** in the app menu
+shows the version and links to the source code.
 
 Each repository is a grid column with its newest run at the top. Passed runs are green, failed red,
 running orange, queued yellow, cancelled/skipped gray and missing/unknown brown. Refresh failures
@@ -86,9 +89,10 @@ The **Repository order** picker defaults to **Recency**, sorting repositories by
 within each group, with alphabetical ties and repositories without dated runs last. **Alphabetical**
 sorts by owner/repository. The grid, preview and menu use the same order. Turn off **Show menu bar
 visualization** to replace the grid with the Day Hub title while retaining the status menu.
-Settings group monitoring, menu bar options, visualization layout and monitored repositories
-separately. Grid size, history and polling interval are configurable, with a live preview.
-Overflow repositories remain accessible through the menu.
+The **Refresh** group sets the polling interval in minutes and how many recent runs each
+repository's status menu lists; the **Menu bar grid** group holds the grid toggle, the order,
+the layout steppers and a live preview of the grid. Overflow repositories remain accessible
+through the menu.
 
 Signed-in monitoring uses the API, including private repositories. Signed-out monitoring retains the
 original public Actions HTML adapter, which reports parsing failures without erasing previous results.
@@ -150,9 +154,10 @@ the lockfile, use a clean checkout without local patches and verify `cargo metad
 
 The workflow runs four synthetic-account scripts with `DAY_HUB_FIXTURE=1`: `hub`, `hidden`,
 `sections`, and a Settings flow. Desktop uses `settings.yaml` to test the preferences window;
-mobile and web use `settings-mobile.yaml` to test the navigation page. Both Settings flows
-exercise invalid drafts without saving preferences. The shared hub flow captures the settings
-window only on desktop and the main window on mobile/web.
+mobile and web use `settings-mobile.yaml` to test the navigation page. Fixture mode keeps
+every preference in memory, so the flows change settings freely without touching the user's
+configuration. The shared hub flow captures the settings window only on desktop and the main
+window on mobile/web.
 The live OAuth script is intentionally manual because it requires browser authorization.
 Cargo features and native host projects cover the workflow's full target matrix. Fixture
 checks exercise the UI without validating live OAuth or credential persistence on each OS.
@@ -174,8 +179,8 @@ day launch -t macos-appkit --env DAY_HUB_FIXTURE=1 --script dayscript/sections.y
 day launch -t macos-appkit --script dayscript/login.yaml
 ```
 
-Fixture mode uses explicitly synthetic repository/job/artifact data and skips Keychain restoration
-and automatic requests. UI scripts keep menu edits in the draft and do not save monitoring preferences.
+Fixture mode uses explicitly synthetic repository/job/artifact data, skips Keychain restoration
+and automatic requests, and stores preferences in memory for the run.
 Unit tests cover pagination, ETag revalidation, foreign-origin rejection, partial GraphQL errors,
 auth failures, retry timing, editor ordering/separators, workflow status/duration, HTML parsing and grid
 rendering. Full authorization and organization visibility require an interactive GitHub login.

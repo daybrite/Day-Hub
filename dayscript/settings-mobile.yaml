@@ -1,34 +1,42 @@
-# Run with DAY_HUB_FIXTURE=1 on mobile or web. Changes remain in the draft.
+# Run with DAY_HUB_FIXTURE=1 on mobile or web. Settings is a sidebar section that pushes one
+# page per group; fixture mode keeps every preference in memory.
 flow:
   - wait_for: { id: hub-nav }
   - navigate: { route: settings }
-  - wait_for: { id: settings-page }
+  - wait_for: { id: settings-root }
   - assert_route: { route: settings }
+  - screenshot: { name: settings }
+  # Leave the settings section before each `settings/<group>` route: an absolute route into
+  # the section that is already current trips a day-core nav bug (navigate_absolute removes
+  # a pending segment the stack already consumed) and stalls the main thread.
+  - navigate: { route: account }
+  - navigate: { route: settings/general }
+  - wait_for: { id: language-picker }
+  - navigate: { route: account }
+  - navigate: { route: settings/grid }
+  - wait_for: { id: menu-repository-order }
   - select: { id: menu-repository-order, index: 1 }
   - assert_value: { id: menu-repository-order, value: 1 }
   - toggle: { id: show-grid, value: false }
   - assert_value: { id: show-grid, value: false }
   - toggle: { id: show-grid, value: true }
-  - scroll_to: { id: monitor-rows }
+  - scroll_to: { id: grid-preview }
+  - assert_visible: { id: grid-preview }
+  - screenshot: { name: grid-settings }
+  - navigate: { route: account }
+  - navigate: { route: settings/repositories }
+  - wait_for: { id: monitor-rows }
   - select: { id: monitor-rows, index: 1 }
   - tap: { id: monitor-remove-selected }
   - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 2 } }
-  - input: { id: interval, text: "0" }
-  - scroll_to: { id: save }
-  - tap: { id: save }
-  - assert_text: { id: settings-message, key: invalid_settings }
-  - input: { id: interval, text: "60" }
-  - input: { id: grid-rows, text: "7" }
-  - scroll_to: { id: save }
-  - tap: { id: save }
-  - assert_text: { id: settings-message, key: invalid_grid }
-  - screenshot: { name: validation }
-  - scroll_to: { id: grid-preview }
-  - assert_visible: { id: grid-preview }
-  - screenshot: { name: mobile-settings }
   - navigate: { route: account }
   - assert_text: { id: github-account, text: "Signed in as fixture-user" }
-  - navigate: { route: settings }
-  - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 3 } }
-  - assert_value: { id: menu-repository-order, value: 0 }
+  # The edit was saved, not held in a draft.
+  - navigate: { route: settings/repositories }
+  - wait_for: { id: monitor-rows }
+  - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 2 } }
+  - navigate: { route: account }
+  - navigate: { route: settings/grid }
+  - wait_for: { id: menu-repository-order }
+  - assert_value: { id: menu-repository-order, value: 1 }
   - navigate: { route: account }
