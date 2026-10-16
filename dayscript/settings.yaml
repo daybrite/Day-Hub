@@ -3,7 +3,8 @@
 flow:
   - wait_for: { id: hub-nav }
   - assert_missing: { id: "sidebar:item:settings" }
-  - navigate: { route: settings }
+  # Preferences remembers the last group, including after the editor flow.
+  - navigate: { route: settings/general }
   - wait_for: { id: language-picker }
   - screenshot: { name: settings, window: day.preferences }
   - navigate: { route: settings/grid }

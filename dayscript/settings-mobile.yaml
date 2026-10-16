@@ -1,9 +1,14 @@
-# Run with DAY_HUB_FIXTURE=1 on mobile or web. Settings is a sidebar section that pushes one
+# Run with DAY_HUB_FIXTURE=1 on mobile. Settings is a sidebar section that pushes one
 # page per group; fixture mode keeps every preference in memory.
 flow:
   - wait_for: { id: hub-nav }
-  - navigate: { route: settings }
-  - wait_for: { id: settings-root }
+  # A previous flow can leave a remembered group. Enter a known group, then pop to root.
+  - navigate: { route: settings/general }
+  - wait_for: { id: language-picker }
+  - nav_back: {}
+  # On compact iOS the stack merges into the sidebar host, sharing its root node's id.
+  # The General row identifies the root page on both merged and standalone stacks.
+  - wait_for: { id: prefs-group-general }
   - assert_route: { route: settings }
   - screenshot: { name: settings }
   # Leave the settings section before each `settings/<group>` route: an absolute route into
@@ -20,7 +25,8 @@ flow:
   - toggle: { id: show-grid, value: false }
   - assert_value: { id: show-grid, value: false }
   - toggle: { id: show-grid, value: true }
-  - scroll_to: { id: grid-preview }
+  # UIKit's grouped settings table owns scrolling natively; it has no Day scroll ancestor.
+  - scroll_to: { id: grid-preview, only_on: [android, harmony] }
   - assert_visible: { id: grid-preview }
   - screenshot: { name: grid-settings }
   - navigate: { route: account }

@@ -40,6 +40,8 @@ flow:
   - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 3 } }
   - screenshot: { name: monitor-editor, window: day.preferences, only_on: [macos, windows, linux] }
   - screenshot: { name: monitor-editor, only_on: [ios, android, harmony, web] }
-  - close_window: { window: day.preferences, only_on: [macos, windows, linux] }
+  # Web Settings is a cover registered under the same window key; dismiss it before
+  # continuing in the main workspace so its navigation stack does not remain active.
+  - close_window: { window: day.preferences, only_on: [macos, windows, linux, web] }
   - navigate: { route: account }
   - assert_text: { id: github-account, text: "Signed in as fixture-user" }

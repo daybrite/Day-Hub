@@ -66,7 +66,8 @@ GitHub mutations are not implemented.
 ## Configure the menu bar
 
 Open **Settings** from the app menu (**⌘,**), the status menu or the account page on desktop,
-or from the sidebar on mobile and the web. Desktop settings open in their own window with one
+or from the sidebar on mobile. Web settings open as a cover from the app-menu button.
+Desktop settings open in their own window with one
 page per group: **General** (appearance and language), **Refresh**, **Menu bar grid**,
 **Menu bar repositories** and **GitHub account**; on mobile the same groups are a navigation
 page. Every change saves and applies at once; there is no Save button and no draft. On the
@@ -154,7 +155,8 @@ the lockfile, use a clean checkout without local patches and verify `cargo metad
 
 The workflow runs four synthetic-account scripts with `DAY_HUB_FIXTURE=1`: `hub`, `hidden`,
 `sections`, and a Settings flow. Desktop uses `settings.yaml` to test the preferences window;
-mobile and web use `settings-mobile.yaml` to test the navigation page. Fixture mode keeps
+mobile uses `settings-mobile.yaml` to test the navigation page, and web uses `settings-web.yaml`
+to test the app-menu cover, including dismissing it before returning to the workspace. Fixture mode keeps
 every preference in memory, so the flows change settings freely without touching the user's
 configuration. The shared hub flow captures the settings window only on desktop and the main
 window on mobile/web.

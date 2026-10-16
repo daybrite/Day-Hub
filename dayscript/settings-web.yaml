@@ -1,0 +1,43 @@
+# Web exposes Settings through its app-menu cover. DAY_HUB_FIXTURE=1 keeps preferences
+# in memory. Dismiss the cover before asserting the workspace's navigation route.
+flow:
+  - wait_for: { id: hub-nav }
+  - assert_missing: { id: "sidebar:item:settings" }
+  - navigate: { route: account }
+  # Opening remembers the last group; explicitly visit General before returning to root.
+  - navigate: { route: settings/general }
+  - wait_for: { id: language-picker }
+  - nav_back: {}
+  - wait_for: { id: prefs-group-general }
+  - screenshot: { name: settings }
+  - tap: { id: prefs-group-grid }
+  - wait_for: { id: menu-repository-order }
+  - select: { id: menu-repository-order, index: 1 }
+  - assert_value: { id: menu-repository-order, value: 1 }
+  - toggle: { id: show-grid, value: false }
+  - assert_value: { id: show-grid, value: false }
+  - toggle: { id: show-grid, value: true }
+  - scroll_to: { id: grid-preview }
+  - assert_visible: { id: grid-preview }
+  - screenshot: { name: grid-settings }
+  - nav_back: {}
+  - tap: { id: prefs-group-repositories }
+  - wait_for: { id: monitor-rows }
+  - select: { id: monitor-rows, index: 1 }
+  - tap: { id: monitor-remove-selected }
+  - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 2 } }
+  - toolbar: { item: settings-done }
+  - assert_missing: { id: monitor-rows }
+  - assert_route: { route: account }
+  - assert_text: { id: github-account, text: "Signed in as fixture-user" }
+  # The app-menu entry reopens the remembered group with its saved values.
+  - navigate: { route: settings }
+  - wait_for: { id: monitor-rows }
+  - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 2 } }
+  - nav_back: {}
+  - tap: { id: prefs-group-grid }
+  - wait_for: { id: menu-repository-order }
+  - assert_value: { id: menu-repository-order, value: 1 }
+  - toolbar: { item: settings-done }
+  - assert_missing: { id: menu-repository-order }
+  - assert_route: { route: account }
