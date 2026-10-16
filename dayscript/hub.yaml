@@ -17,10 +17,13 @@ flow:
   - navigate: { route: settings/repositories }
   - wait_for: { id: monitor-rows }
   - input: { id: known-repository-search, text: "fixture-org/day" }
-  - scroll_to: { id: known-repositories, only_on: [ios, android, harmony, web] }
+  # AppKit only realizes visible list rows. CI's smaller display can put this list below
+  # the Settings window's viewport, so reveal it before looking up a row's Add button.
+  - scroll_to: { id: known-repositories, only_on: [macos, ios, android, harmony, web] }
   - tap: { id: known-add-1 }
+  - assert_text: { id: monitor-row-count, key: editor_count, args: { count: 4 } }
   - assert_missing: { id: known-add-1 }
-  - scroll_to: { id: monitor-rows, only_on: [ios, android, harmony, web] }
+  - scroll_to: { id: monitor-rows, only_on: [macos, ios, android, harmony, web] }
   - context_menu: { id: monitor-row-fixture-org~day, item_id: monitor-remove }
   - assert_missing: { id: monitor-row-fixture-org~day }
   - input: { id: monitor-input, text: "fixture/../invalid" }
@@ -30,10 +33,10 @@ flow:
   - tap: { id: monitor-add }
   - tap: { id: monitor-separator }
   - reorder: { id: monitor-rows, from: 1, to: 2 }
-  - scroll_to: { id: monitor-rows, only_on: [ios, android, harmony, web] }
+  - scroll_to: { id: monitor-rows, only_on: [macos, ios, android, harmony, web] }
   - context_menu: { id: monitor-row-separator-1, item_id: monitor-remove }
   - assert_missing: { id: monitor-row-separator-1 }
-  - scroll_to: { id: monitor-rows, only_on: [ios, android, harmony, web] }
+  - scroll_to: { id: monitor-rows, only_on: [macos, ios, android, harmony, web] }
   - select: { id: monitor-rows, index: 2 }
   - tap: { id: monitor-remove-selected }
   - assert_missing: { id: monitor-row-fixture~new }
