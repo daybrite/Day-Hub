@@ -1,37 +1,37 @@
 # Run on desktop with DAY_HUB_FIXTURE=1. Settings apply at once; fixture mode keeps every
 # preference in memory, so the flow never changes the user's monitoring configuration.
 flow:
-  - wait_for: { id: hub-nav }
-  - assert_missing: { id: "sidebar:item:settings" }
+  - wait_for: { id: hub_nav }
+  - assert_missing: { id: "sidebar:item%3Asettings" }
   # Preferences remembers the last group, including after the editor flow.
   - navigate: { route: settings/general }
-  - wait_for: { id: language-picker }
+  - wait_for: { id: language_picker }
   - screenshot: { name: settings, window: day.preferences }
   - navigate: { route: settings/grid }
-  - wait_for: { id: menu-repository-order }
-  - select: { id: menu-repository-order, index: 1 }
-  - assert_value: { id: menu-repository-order, value: 1 }
-  - toggle: { id: show-grid, value: false }
-  - assert_value: { id: show-grid, value: false }
+  - wait_for: { id: menu_repository_order }
+  - select: { id: menu_repository_order, index: 1 }
+  - assert_value: { id: menu_repository_order, value: 1 }
+  - toggle: { id: show_grid, value: false }
+  - assert_value: { id: show_grid, value: false }
   - close_window: { window: day.preferences }
-  - assert_missing: { id: menu-repository-order }
+  - assert_missing: { id: menu_repository_order }
   # Reopening shows the saved values, not a discarded draft.
   - navigate: { route: settings/grid }
-  - wait_for: { id: menu-repository-order }
-  - assert_value: { id: menu-repository-order, value: 1 }
-  - assert_value: { id: show-grid, value: false }
-  - select: { id: menu-repository-order, index: 0 }
-  - toggle: { id: show-grid, value: true }
-  - assert_visible: { id: grid-preview }
+  - wait_for: { id: menu_repository_order }
+  - assert_value: { id: menu_repository_order, value: 1 }
+  - assert_value: { id: show_grid, value: false }
+  - select: { id: menu_repository_order, index: 0 }
+  - toggle: { id: show_grid, value: true }
+  - assert_visible: { id: grid_preview }
   - screenshot: { name: grid-settings, window: day.preferences }
   - navigate: { route: settings/refresh }
   - wait_for: { id: interval }
-  - assert_visible: { id: history-count }
+  - assert_visible: { id: history_count }
   - screenshot: { name: refresh-settings, window: day.preferences }
   - navigate: { route: settings/github }
-  - wait_for: { id: account-action }
-  - assert_text: { id: account-user, text: "fixture-user" }
+  - wait_for: { id: account_action }
+  - assert_text: { id: account_user, text: "fixture-user" }
   - screenshot: { name: account-settings, window: day.preferences }
   - close_window: { window: day.preferences }
   - navigate: { route: account }
-  - assert_text: { id: github-account, text: "Signed in as fixture-user" }
+  - assert_text: { id: github_account, text: "Signed in as fixture-user" }

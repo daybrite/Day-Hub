@@ -90,7 +90,7 @@ pub fn hidden_filter_menu(hub: Hub) -> MenuEntry {
     } else {
         res::str::show_hidden_repositories()
     })
-    .id("toggle-hidden-repositories")
+    .id(day::id!(toggle_hidden_repositories))
     .checked(hub.show_hidden.get())
     .action(move || hub.toggle_hidden_filter())
 }
@@ -102,7 +102,7 @@ fn owner_context_menu(hub: Hub, owner: String) -> Vec<MenuEntry> {
         } else {
             res::str::hide_owner(owner.clone())
         })
-        .id("toggle-hidden-owner")
+        .id(day::id!(toggle_hidden_owner))
         .action(move || hub.toggle_hidden(&owner, true)),
     ]
 }
@@ -122,7 +122,7 @@ fn repository_context_menu(hub: Hub, name: String, owner: String) -> Vec<MenuEnt
         } else {
             res::str::hide_repository()
         })
-        .id("toggle-hidden-repository")
+        .id(day::id!(toggle_hidden_repository))
         .action(move || hub.toggle_hidden(&name, false)),
     ];
     menu.extend(owner_context_menu(hub, owner));
@@ -249,7 +249,7 @@ pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
                 .and_then(|(_, name)| hub.repository(&name.replace('~', "/")))
                 .is_some_and(|r| hub.repository_visible(&r))
         })
-        .id("hub-nav");
+        .id(day::id!(hub_nav));
     navigation
         .searchable(Search::new(hub.search).prompt(res::str::search_repositories()))
         .header(move || {
@@ -262,7 +262,7 @@ pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
                         (Sort::Stars, res::str::sort_stars()),
                     ],
                 )
-                .id("repository-sort")
+                .id(day::id!(repository_sort))
                 .grow_w(),
                 labeled(res::str::show_archived(), toggle(hub.archived)),
                 label(move || {
@@ -272,7 +272,7 @@ pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
                     })
                     .format()
                 })
-                .id("sidebar-repository-count"),
+                .id(day::id!(sidebar_repository_count)),
                 label(move || {
                     let _ = hub.monitor.clock.get();
                     let wait = hub.api.get().map(|a| a.retry_in()).unwrap_or(0);
@@ -282,7 +282,7 @@ pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
                         hub.error.get().as_ref().map(error_text).unwrap_or_default()
                     }
                 })
-                .id("hub-error"),
+                .id(day::id!(hub_error)),
             ))
             .spacing(10.0)
             .padding(Space::M)
@@ -299,7 +299,7 @@ fn account(hub: Hub) -> impl Piece {
                 move || {
                     column((
                         button(res::str::sign_in())
-                            .id("github-sign-in")
+                            .id(day::id!(github_sign_in))
                             .enabled(move || !hub.busy.get())
                             .action(move || hub.sign_in()),
                         when(
@@ -321,9 +321,9 @@ fn account(hub: Hub) -> impl Piece {
                                     })
                                     .font(Font::Title)
                                     .selectable()
-                                    .id("github-device-code"),
+                                    .id(day::id!(github_device_code)),
                                     button(res::str::copy_code_open_login())
-                                        .id("github-copy-code-open")
+                                        .id(day::id!(github_copy_code_open))
                                         .action(move || {
                                             let Some(device) = hub.device.get() else {
                                                 return;
@@ -343,13 +343,13 @@ fn account(hub: Hub) -> impl Piece {
                                         2 => res::str::login_copy_failed().format(),
                                         _ => String::new(),
                                     })
-                                    .id("github-copy-status"),
+                                    .id(day::id!(github_copy_status)),
                                     label(res::str::login_wait()),
                                     button(res::str::open_login())
-                                        .id("github-open-login")
+                                        .id(day::id!(github_open_login))
                                         .action(|| open_url("https://github.com/login/device")),
                                     button(res::str::cancel_login())
-                                        .id("cancel-login")
+                                        .id(day::id!(cancel_login))
                                         .action(move || hub.cancel_login()),
                                 ))
                                 .spacing(Space::M)
@@ -363,17 +363,17 @@ fn account(hub: Hub) -> impl Piece {
                 column((
                     label(move || res::str::signed_in(hub.login.get()).format())
                         .font(Font::Headline)
-                        .id("github-account"),
+                        .id(day::id!(github_account)),
                     label(move || {
                         res::str::repository_count(hub.repos.with(|r| r.len()) as i64).format()
                     })
-                    .id("repository-count"),
+                    .id(day::id!(repository_count)),
                     row((
                         button(res::str::refresh_repositories())
                             .enabled(move || !hub.busy.get())
                             .action(move || hub.reload()),
                         button(res::str::sign_out())
-                            .id("github-sign-out")
+                            .id(day::id!(github_sign_out))
                             .action(move || hub.sign_out()),
                     ))
                     .spacing(Space::M),
@@ -425,14 +425,14 @@ fn repository_page(hub: Hub, name: String) -> AnyPiece {
     column((
         label(repo.full_name)
             .font(Font::Title)
-            .id("repository-title")
+            .id(day::id!(repository_title))
             .context_menu(move || {
                 repository_context_menu(hub, menu_name.clone(), menu_owner.clone())
             }),
         label(repo.description.unwrap_or_default()),
         row((
             button(favorite)
-                .id("favorite-repository")
+                .id(day::id!(favorite_repository))
                 .action(move || hub.favorite(&button_name)),
             button(res::str::open_repository()).action(move || open_url(&repo.html_url)),
             button(res::str::refresh_repository())
@@ -464,7 +464,7 @@ fn repository_page(hub: Hub, name: String) -> AnyPiece {
             .item("actions".to_string(), res::str::actions(), move || {
                 actions(hub, actions_name.clone())
             })
-            .id("repository-tabs")
+            .id(day::id!(repository_tabs))
             .grow(),
     ))
     .spacing(Space::M)
@@ -496,7 +496,7 @@ fn overview(hub: Hub, name: String) -> impl Piece {
     })
     .height(220.0)
     .grow_w()
-    .id("language-chart");
+    .id(day::id!(language_chart));
     let commits = chart(move || {
         let mut days: BTreeMap<String, u64> = BTreeMap::new();
         for c in val()["defaultBranchRef"]["target"]["history"]["nodes"]
@@ -521,7 +521,7 @@ fn overview(hub: Hub, name: String) -> impl Piece {
     })
     .height(230.0)
     .grow_w()
-    .id("commit-chart");
+    .id(day::id!(commit_chart));
     scroll(
         column((
             label(move || {
@@ -600,7 +600,7 @@ fn actions(hub: Hub, name: String) -> impl Piece {
     })
     .height(170.0)
     .grow_w()
-    .id("run-chart");
+    .id(day::id!(run_chart));
     scroll(
         column((
             label(move || {
@@ -649,7 +649,7 @@ fn actions(hub: Hub, name: String) -> impl Piece {
                             })
                             .format()
                         })
-                        .id_of(move || format!("run-{}", number(&slot.get(), "id")))
+                        .id_of(move || day::id!(run, number(&slot.get(), "id")))
                         .action(move || hub.load_run(name.clone(), number(&slot.get(), "id"))),
                         label(move || {
                             let r = slot.get();
@@ -700,7 +700,7 @@ fn actions(hub: Hub, name: String) -> impl Piece {
                             .any(),
                         label(res::str::jobs())
                             .font(Font::Headline)
-                            .id("run-jobs")
+                            .id(day::id!(run_jobs))
                             .any(),
                         each(
                             items(

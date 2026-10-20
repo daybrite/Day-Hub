@@ -339,7 +339,7 @@ fn settings(app: App, hub: hub::Hub) -> Prefs {
             ),
         ],
     )
-    .id("menu-repository-order");
+    .id(day::id!(menu_repository_order));
     // The session is live as soon as a credential is restored (`api`); the fixture only
     // sets the login. Either marks the account as signed in.
     let signed_in = move || hub.api.get().is_some() || !hub.login.get().is_empty();
@@ -351,11 +351,11 @@ fn settings(app: App, hub: hub::Hub) -> Prefs {
                 .icon(Symbol::Refresh)
                 .row(
                     rows::stepper(&REFRESH_MINUTES, res::str::refresh_minutes(), REFRESH_RANGE)
-                        .id("interval"),
+                        .id(day::id!(interval)),
                 )
                 .row(
                     rows::stepper(&BADGE_HISTORY, res::str::history_count(), BADGE_RANGE)
-                        .id("history-count"),
+                        .id(day::id!(history_count)),
                 ),
         )
         .group(
@@ -363,7 +363,10 @@ fn settings(app: App, hub: hub::Hub) -> Prefs {
                 .icon(res::vectors::prefs_grid)
                 .section(
                     Section::new()
-                        .row(rows::toggle(&GRID_VISIBLE, res::str::show_grid()).id("show-grid"))
+                        .row(
+                            rows::toggle(&GRID_VISIBLE, res::str::show_grid())
+                                .id(day::id!(show_grid)),
+                        )
                         .row(order),
                 )
                 .section(
@@ -376,7 +379,7 @@ fn settings(app: App, hub: hub::Hub) -> Prefs {
                                 res::str::grid_rows(),
                                 stepper_range(&grid::ROWS),
                             )
-                            .id("grid-rows"),
+                            .id(day::id!(grid_rows)),
                         )
                         .row(
                             rows::stepper(
@@ -384,7 +387,7 @@ fn settings(app: App, hub: hub::Hub) -> Prefs {
                                 res::str::grid_column_width(),
                                 stepper_range(&grid::COLUMN_WIDTH),
                             )
-                            .id("grid-column-width"),
+                            .id(day::id!(grid_column_width)),
                         )
                         .row(
                             rows::stepper(
@@ -392,7 +395,7 @@ fn settings(app: App, hub: hub::Hub) -> Prefs {
                                 res::str::grid_max_width(),
                                 stepper_range(&grid::MAX_WIDTH),
                             )
-                            .id("grid-max-width"),
+                            .id(day::id!(grid_max_width)),
                         )
                         .row(rows::custom(move || grid_preview(app))),
                 ),
@@ -419,7 +422,7 @@ fn settings(app: App, hub: hub::Hub) -> Prefs {
                             login
                         }
                     })
-                    .id("account-user"),
+                    .id(day::id!(account_user)),
                 )
                 .row(
                     rows::action(
@@ -443,7 +446,7 @@ fn settings(app: App, hub: hub::Hub) -> Prefs {
                             }
                         },
                     )
-                    .id("account-action"),
+                    .id(day::id!(account_action)),
                 ),
         )
         .window_size(640.0, 800.0)
@@ -456,7 +459,7 @@ fn grid_preview(app: App) -> impl Piece {
         canvas(move |draw, size| app.grid.with(|grid| grid.draw(draw, size)))
             .height(24.0)
             .grow_w()
-            .id("grid-preview")
+            .id(day::id!(grid_preview))
             .a11y(|a| a.label(res::str::grid_preview())),
         label(move || {
             let grid = app.grid.get();
@@ -473,7 +476,7 @@ fn grid_preview(app: App) -> impl Piece {
         })
         .font(Font::Footnote)
         .secondary()
-        .id("grid-preview-count"),
+        .id(day::id!(grid_preview_count)),
     ))
     .spacing(Space::S)
     .align(HAlign::Leading)
@@ -591,7 +594,7 @@ fn status(app: App) -> StatusItem {
     menu.extend([
         menu_separator(),
         menu_item(res::str::refresh())
-            .id("refresh")
+            .id(day::id!(refresh))
             .enabled(
                 app.progress.get().is_none()
                     && !projects.is_empty()
@@ -599,12 +602,14 @@ fn status(app: App) -> StatusItem {
             )
             .action(move || app.refresh(true)),
         menu_item(res::str::pause())
-            .id("pause")
+            .id(day::id!(pause))
             .checked(PAUSED.get())
             .action(|| PAUSED.set(!PAUSED.get_untracked())),
-        menu_item(res::str::settings()).id("settings").action(|| {
-            day_piece_settings::open();
-        }),
+        menu_item(res::str::settings())
+            .id(day::id!(settings))
+            .action(|| {
+                day_piece_settings::open();
+            }),
         menu_separator(),
         menu_role(MenuRole::Quit),
     ]);

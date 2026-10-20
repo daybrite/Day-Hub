@@ -108,8 +108,8 @@ pub fn repositories() -> impl Piece {
             .padding(10.0)
             .grow_w()
             .id_of(move || {
-                format!(
-                    "monitor-row-{}",
+                day::id!(
+                    monitor_row,
                     slot.get()
                         .repository
                         .map(|r| r.replace('/', "~"))
@@ -121,7 +121,7 @@ pub fn repositories() -> impl Piece {
                 let id = slot.get().id;
                 vec![
                     menu_item(res::str::remove_row())
-                        .id("monitor-remove")
+                        .id(day::id!(monitor_remove))
                         .action(move || remove(id)),
                 ]
             })
@@ -146,21 +146,21 @@ pub fn repositories() -> impl Piece {
         .reorderable(Reorder::new(move |from, to| {
             rows.update(|r| move_row(r, from, to))
         }))
-        .id("monitor-rows")
+        .id(day::id!(monitor_rows))
         .height(280.0)
         .grow_w(),
         label(move || res::str::editor_count(rows.with(|r| r.len()) as i64).format())
-            .id("monitor-row-count"),
+            .id(day::id!(monitor_row_count)),
         row((
             text_field(input)
                 .placeholder(res::str::repository_address())
-                .id("monitor-input")
+                .id(day::id!(monitor_input))
                 .grow_w(),
             button(res::str::add_repository())
-                .id("monitor-add")
+                .id(day::id!(monitor_add))
                 .action(move || add(input.get())),
             button(res::str::add_separator())
-                .id("monitor-separator")
+                .id(day::id!(monitor_separator))
                 .action(move || {
                     let id = next.get();
                     next.set(id + 1);
@@ -175,18 +175,18 @@ pub fn repositories() -> impl Piece {
         ))
         .spacing(10.0),
         button(res::str::remove_selected_row())
-            .id("monitor-remove-selected")
+            .id(day::id!(monitor_remove_selected))
             .enabled(move || selected.get().is_some())
             .action(move || {
                 if let Some(id) = selected.get() {
                     remove(id);
                 }
             }),
-        label(move || message.get()).id("monitor-message"),
+        label(move || message.get()).id(day::id!(monitor_message)),
         label(res::str::known_repositories()).font(Font::Headline),
         text_field(filter)
             .placeholder(res::str::find_known_repository())
-            .id("known-repository-search"),
+            .id(day::id!(known_repository_search)),
         list(
             items(
                 move || {
@@ -210,7 +210,7 @@ pub fn repositories() -> impl Piece {
                 row((
                     label(move || slot.get().full_name).grow_w(),
                     button(res::str::add_repository())
-                        .id_of(move || format!("known-add-{}", slot.get().id))
+                        .id_of(move || day::id!(known_add, slot.get().id))
                         .action(move || add(slot.get().full_name)),
                 ))
                 .spacing(10.0)
@@ -218,7 +218,7 @@ pub fn repositories() -> impl Piece {
         )
         .height(180.0)
         .grow_w()
-        .id("known-repositories"),
+        .id(day::id!(known_repositories)),
     ))
     .spacing(10.0)
     .align(HAlign::Leading)
