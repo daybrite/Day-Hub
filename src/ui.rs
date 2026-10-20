@@ -1,6 +1,6 @@
 use crate::{
     api::Error,
-    hub::{Detail, Hub, Repository},
+    hub::{Detail, Hub, Repository, Sort},
     model::{Run, Status},
     res,
 };
@@ -77,18 +77,18 @@ pub fn monitor_run(value: &Value) -> Run {
             .as_u64()
             .and_then(|attempt| u32::try_from(attempt).ok())
             .filter(|attempt| *attempt > 0),
-        duration: res::str::duration_hours_minutes(
-            format!("{:02}", elapsed / 3600),
-            format!("{:02}", elapsed / 60 % 60),
-        )
+        duration: res::str::duration_hours_minutes(res::str::DurationHoursMinutes {
+            hours: format!("{:02}", elapsed / 3600),
+            minutes: format!("{:02}", elapsed / 60 % 60),
+        })
         .format(),
     }
 }
 pub fn hidden_filter_menu(hub: Hub) -> MenuEntry {
     menu_item(if hub.show_hidden.get() {
-        res::str::hide_hidden_repositories().format()
+        res::str::hide_hidden_repositories()
     } else {
-        res::str::show_hidden_repositories().format()
+        res::str::show_hidden_repositories()
     })
     .id("toggle-hidden-repositories")
     .checked(hub.show_hidden.get())
@@ -98,9 +98,9 @@ fn owner_context_menu(hub: Hub, owner: String) -> Vec<MenuEntry> {
     let hidden = hub.hidden.with(|h| h.owner(&owner));
     vec![
         menu_item(if hidden {
-            res::str::restore_owner(owner.clone()).format()
+            res::str::restore_owner(owner.clone())
         } else {
-            res::str::hide_owner(owner.clone()).format()
+            res::str::hide_owner(owner.clone())
         })
         .id("toggle-hidden-owner")
         .action(move || hub.toggle_hidden(&owner, true)),
@@ -112,15 +112,15 @@ fn repository_context_menu(hub: Hub, name: String, owner: String) -> Vec<MenuEnt
     let favorite_name = name.clone();
     let mut menu = vec![
         menu_item(if favorite {
-            res::str::unfavorite().format()
+            res::str::unfavorite()
         } else {
-            res::str::favorite().format()
+            res::str::favorite()
         })
         .action(move || hub.favorite(&favorite_name)),
         menu_item(if hidden {
-            res::str::restore_repository().format()
+            res::str::restore_repository()
         } else {
-            res::str::hide_repository().format()
+            res::str::hide_repository()
         })
         .id("toggle-hidden-repository")
         .action(move || hub.toggle_hidden(&name, false)),
@@ -190,55 +190,49 @@ fn rows(hub: Hub) -> Vec<SidebarRow> {
     }
     result
 }
-fn sort_repositories(repos: &mut [Repository], order: usize) {
+fn sort_repositories(repos: &mut [Repository], order: Sort) {
     repos.sort_by(|a, b| {
         match order {
-            1 => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            2 => b.stargazers_count.cmp(&a.stargazers_count),
-            _ => b.updated_at.cmp(&a.updated_at),
+            Sort::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            Sort::Stars => b.stargazers_count.cmp(&a.stargazers_count),
+            Sort::Updated => b.updated_at.cmp(&a.updated_at),
         }
         .then_with(|| a.full_name.cmp(&b.full_name))
     });
 }
 pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
-    let destination = prefs.clone();
     let navigation = nav(hub.selected)
         .style(NavStyle::Sidebar)
-        .collapsed_sections(hub.collapsed_sections)
-        .on_section_expansion(move |_, _| hub.save_collapsed_sections())
+        .sections(
+            Sections::collapsible(hub.collapsed_sections)
+                .on_change(move |_, _| hub.save_collapsed_sections()),
+        )
         .item("account".to_string(), res::str::account(), move || {
             account(hub)
         })
-        // Desktop reaches Settings through its menu and window; without a menu bar the
-        // settings page is a sidebar section (https://daybrite.dev/docs/settings/).
-        .items(
-            {
-                let prefs = prefs.clone();
-                move || prefs.nav_keys(day_piece_settings::NAV_KEY.to_string())
-            },
-            move |key: &String| prefs.nav_item(key.clone()),
-        )
-        .items(
-            move || rows(hub),
-            move |r| {
-                let mut row = item(r.key.clone(), r.title.clone()).context_menu(
-                    repository_context_menu(hub, r.name.clone(), r.owner.clone()),
-                );
-                if hub.hidden.with(|h| h.owner(&r.owner)) {
-                    row = row.badge(res::str::hidden_owner_badge());
-                } else if hub.hidden.with(|h| h.repository(&r.name)) {
-                    row = row.badge(res::str::hidden_repository_badge());
-                }
-                if let Some(section) = &r.section {
-                    row = row.section_id(r.section_id.clone(), section.clone());
-                }
-                row
-            },
-        )
+        .items((
+            // Desktop reaches Settings through its menu and window; without a menu bar the
+            // settings page is a sidebar section (https://daybrite.dev/docs/settings/).
+            prefs.nav_item(day_piece_settings::NAV_KEY.to_string()),
+            nav_items(
+                move || rows(hub),
+                move |r| {
+                    let mut row = item(r.key.clone(), r.title.clone()).context_menu(
+                        repository_context_menu(hub, r.name.clone(), r.owner.clone()),
+                    );
+                    if hub.hidden.with(|h| h.owner(&r.owner)) {
+                        row = row.badge(res::str::hidden_owner_badge());
+                    } else if hub.hidden.with(|h| h.repository(&r.name)) {
+                        row = row.badge(res::str::hidden_repository_badge());
+                    }
+                    if let Some(section) = &r.section {
+                        row = row.section_id(r.section_id.clone(), section.clone());
+                    }
+                    row
+                },
+            ),
+        ))
         .destination(move |key: &String| {
-            if key == day_piece_settings::NAV_KEY {
-                return destination.page();
-            }
             repository_page(
                 hub,
                 key.split_once(':')
@@ -257,26 +251,25 @@ pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
         })
         .id("hub-nav");
     navigation
-        .searchable(hub.search)
-        .search_prompt(res::str::search_repositories())
+        .searchable(Search::new(hub.search).prompt(res::str::search_repositories()))
         .header(move || {
             column((
                 picker(
-                    vec![
-                        res::str::sort_updated().format(),
-                        res::str::sort_name().format(),
-                        res::str::sort_stars().format(),
-                    ],
                     hub.sort,
+                    [
+                        (Sort::Updated, res::str::sort_updated()),
+                        (Sort::Name, res::str::sort_name()),
+                        (Sort::Stars, res::str::sort_stars()),
+                    ],
                 )
                 .id("repository-sort")
                 .grow_w(),
                 labeled(res::str::show_archived(), toggle(hub.archived)),
                 label(move || {
-                    res::str::sidebar_repository_count(
-                        hub.repos.with(|r| r.len()) as i64,
-                        visible_repositories(hub).len() as i64,
-                    )
+                    res::str::sidebar_repository_count(res::str::SidebarRepositoryCount {
+                        total: hub.repos.with(|r| r.len()) as i64,
+                        visible: visible_repositories(hub).len() as i64,
+                    })
                     .format()
                 })
                 .id("sidebar-repository-count"),
@@ -292,7 +285,7 @@ pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
                 .id("hub-error"),
             ))
             .spacing(10.0)
-            .padding(12.0)
+            .padding(Space::M)
         })
 }
 
@@ -359,11 +352,11 @@ fn account(hub: Hub) -> impl Piece {
                                         .id("cancel-login")
                                         .action(move || hub.cancel_login()),
                                 ))
-                                .spacing(12.0)
+                                .spacing(Space::M)
                             },
                         ),
                     ))
-                    .spacing(16.0)
+                    .spacing(Space::L)
                 },
             )
             .otherwise(move || {
@@ -383,9 +376,9 @@ fn account(hub: Hub) -> impl Piece {
                             .id("github-sign-out")
                             .action(move || hub.sign_out()),
                     ))
-                    .spacing(12.0),
+                    .spacing(Space::M),
                 ))
-                .spacing(12.0)
+                .spacing(Space::M)
             }),
             when(
                 move || hub.busy.get() && hub.device.get().is_none(),
@@ -433,7 +426,7 @@ fn repository_page(hub: Hub, name: String) -> AnyPiece {
         label(repo.full_name)
             .font(Font::Title)
             .id("repository-title")
-            .context_menu_fn(move |_| {
+            .context_menu(move || {
                 repository_context_menu(hub, menu_name.clone(), menu_owner.clone())
             }),
         label(repo.description.unwrap_or_default()),
@@ -474,7 +467,7 @@ fn repository_page(hub: Hub, name: String) -> AnyPiece {
             .id("repository-tabs")
             .grow(),
     ))
-    .spacing(12.0)
+    .spacing(Space::M)
     .padding(20.0)
     .grow()
     .any()
@@ -580,7 +573,7 @@ fn overview(hub: Hub, name: String) -> impl Piece {
             commits,
         ))
         .spacing(14.0)
-        .padding(12.0),
+        .padding(Space::M),
     )
     .grow()
 }
@@ -626,10 +619,10 @@ fn actions(hub: Hub, name: String) -> impl Piece {
                 if completed == 0 {
                     res::str::run_summary_pending(runs.len() as i64).format()
                 } else {
-                    res::str::run_summary(
-                        runs.len() as i64,
-                        format!("{:.0}", success as f64 / completed as f64 * 100.0),
-                    )
+                    res::str::run_summary(res::str::RunSummary {
+                        count: runs.len() as i64,
+                        rate: format!("{:.0}", success as f64 / completed as f64 * 100.0),
+                    })
                     .format()
                 }
             })
@@ -648,27 +641,27 @@ fn actions(hub: Hub, name: String) -> impl Piece {
                     column((
                         button(move || {
                             let r = slot.get();
-                            res::str::run_row(
-                                text(&r, "head_branch"),
-                                number(&r, "run_number").to_string(),
-                                crate::status_label(status(&r)),
-                                text(&r, "display_title"),
-                            )
+                            res::str::run_row(res::str::RunRow {
+                                branch: text(&r, "head_branch"),
+                                number: number(&r, "run_number").to_string(),
+                                status: crate::status_label(status(&r)),
+                                title: text(&r, "display_title"),
+                            })
                             .format()
                         })
                         .id_of(move || format!("run-{}", number(&slot.get(), "id")))
                         .action(move || hub.load_run(name.clone(), number(&slot.get(), "id"))),
                         label(move || {
                             let r = slot.get();
-                            res::str::run_context(
-                                number(&r, "run_attempt").to_string(),
-                                text(&r, "created_at"),
-                                text(&r, "event"),
-                            )
+                            res::str::run_context(res::str::RunContext {
+                                attempt: number(&r, "run_attempt").to_string(),
+                                date: text(&r, "created_at"),
+                                event: text(&r, "event"),
+                            })
                             .format()
                         }),
                     ))
-                    .spacing(4.0)
+                    .spacing(Space::XS)
                 },
             )
             .any(),
@@ -722,10 +715,10 @@ fn actions(hub: Hub, name: String) -> impl Piece {
                             move |job| {
                                 column((
                                     label(move || {
-                                        res::str::job_row(
-                                            text(&job.get(), "name"),
-                                            crate::status_label(status(&job.get())),
-                                        )
+                                        res::str::job_row(res::str::JobRow {
+                                            name: text(&job.get(), "name"),
+                                            status: crate::status_label(status(&job.get())),
+                                        })
                                         .format()
                                     })
                                     .font(Font::Headline),
@@ -741,11 +734,14 @@ fn actions(hub: Hub, name: String) -> impl Piece {
                                         ),
                                         move |step| {
                                             label(move || {
-                                                res::str::step_row(
-                                                    text(&step.get(), "name"),
-                                                    number(&step.get(), "number").to_string(),
-                                                    crate::status_label(status(&step.get())),
-                                                )
+                                                res::str::step_row(res::str::StepRow {
+                                                    name: text(&step.get(), "name"),
+                                                    number: number(&step.get(), "number")
+                                                        .to_string(),
+                                                    status: crate::status_label(status(
+                                                        &step.get(),
+                                                    )),
+                                                })
                                                 .format()
                                             })
                                         },
@@ -768,11 +764,11 @@ fn actions(hub: Hub, name: String) -> impl Piece {
                             ),
                             move |artifact| {
                                 label(move || {
-                                    res::str::artifact_row(
-                                        number(&artifact.get(), "size_in_bytes").to_string(),
-                                        text(&artifact.get(), "expires_at"),
-                                        text(&artifact.get(), "name"),
-                                    )
+                                    res::str::artifact_row(res::str::ArtifactRow {
+                                        bytes: number(&artifact.get(), "size_in_bytes").to_string(),
+                                        date: text(&artifact.get(), "expires_at"),
+                                        name: text(&artifact.get(), "name"),
+                                    })
                                     .format()
                                 })
                             },
@@ -807,8 +803,8 @@ fn actions(hub: Hub, name: String) -> impl Piece {
             )
             .any(),
         ))
-        .spacing(12.0)
-        .padding(12.0),
+        .spacing(Space::M)
+        .padding(Space::M),
     )
     .grow()
 }

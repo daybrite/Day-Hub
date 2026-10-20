@@ -51,6 +51,25 @@ pub struct Detail {
     pub error: Option<Error>,
     pub loaded: Option<Instant>,
 }
+/// The sidebar's repository order, persisted by position under `hub.sort`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Sort {
+    Updated,
+    Name,
+    Stars,
+}
+impl Sort {
+    fn from_index(index: usize) -> Sort {
+        match index {
+            1 => Sort::Name,
+            2 => Sort::Stars,
+            _ => Sort::Updated,
+        }
+    }
+    fn index(self) -> usize {
+        self as usize
+    }
+}
 #[derive(Clone, Copy)]
 pub struct Hub {
     pub api: Signal<Option<Rc<Client>>>,
@@ -61,7 +80,7 @@ pub struct Hub {
     pub show_hidden: Signal<bool>,
     pub collapsed_sections: Signal<std::collections::HashSet<String>>,
     pub search: Signal<String>,
-    pub sort: Signal<usize>,
+    pub sort: Signal<Sort>,
     pub archived: Signal<bool>,
     pub busy: Signal<bool>,
     pub error: Signal<Option<Error>>,
@@ -98,7 +117,7 @@ impl Hub {
             sort: Signal::global(
                 day::prefs::get("hub.sort")
                     .and_then(|s| s.parse().ok())
-                    .unwrap_or(0),
+                    .map_or(Sort::Updated, Sort::from_index),
             ),
             archived: Signal::global(day::prefs::get("hub.archived").as_deref() != Some("false")),
             busy: Signal::global(false),
@@ -119,7 +138,7 @@ impl Hub {
         day::reactive::watch(
             move || h.sort.get(),
             move |v, _| {
-                day::prefs::set("hub.sort", &v.to_string());
+                day::prefs::set("hub.sort", &v.index().to_string());
             },
         );
         day::reactive::watch(

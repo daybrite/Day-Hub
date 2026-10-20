@@ -20,14 +20,9 @@ day::resources!();
 day::day_start!(options: main_window(), root);
 
 pub fn main_window() -> day::WindowOptions {
-    day::WindowOptions {
-        locales: Some((res::locales::DEFAULT, res::locales::CATALOG)),
-        title_fn: Some(|| res::str::app_title().format()),
-        size: Size::new(1180.0, 800.0),
-        min_size: Some(Size::new(840.0, 600.0)),
-        version: Some(env!("CARGO_PKG_VERSION").into()),
-        ..Default::default()
-    }
+    res::window_options()
+        .size(1180.0, 800.0)
+        .min_size(840.0, 600.0)
 }
 
 /// The GitHub repository the About links to.
@@ -235,7 +230,11 @@ impl App {
         let rate = model::pass_rate(&projects)
             .map(|rate| res::str::pass_rate(rate.to_string()).format())
             .unwrap_or_else(|| res::str::no_completed().format());
-        res::str::summary(projects.len() as i64, rate).format()
+        res::str::summary(res::str::Summary {
+            count: projects.len() as i64,
+            rate,
+        })
+        .format()
     }
 
     fn update_text(self) -> String {
@@ -247,7 +246,11 @@ impl App {
             .format();
         }
         if let Some((done, total)) = self.progress.get() {
-            res::str::updating(done.to_string(), total.to_string()).format()
+            res::str::updating(res::str::Updating {
+                done: done.to_string(),
+                total: total.to_string(),
+            })
+            .format()
         } else if let Some(at) = self.checked.get() {
             res::str::updated(now.saturating_duration_since(at).as_secs().to_string()).format()
         } else {
@@ -283,12 +286,12 @@ pub fn root() -> impl Piece {
             false
         }
     });
-    app_menu_reactive(move || {
+    app_menu(move || {
         vec![
             sub_menu(
-                res::str::file_menu().format(),
+                res::str::file_menu(),
                 vec![
-                    menu_item(res::str::open_hub().format()).action(ui::show_main),
+                    menu_item(res::str::open_hub()).action(ui::show_main),
                     menu_role(MenuRole::CloseWindow),
                     menu_separator(),
                     menu_role(MenuRole::Preferences),
@@ -296,11 +299,8 @@ pub fn root() -> impl Piece {
                 ],
             )
             .bar_role(MenuBarRole::File),
-            sub_menu(
-                res::str::view_menu().format(),
-                vec![ui::hidden_filter_menu(hub)],
-            )
-            .bar_role(MenuBarRole::View),
+            sub_menu(res::str::view_menu(), vec![ui::hidden_filter_menu(hub)])
+                .bar_role(MenuBarRole::View),
         ]
     });
     status_item("hublights", move || status(app));
@@ -464,14 +464,18 @@ fn grid_preview(app: App) -> impl Piece {
                 res::str::grid_preview_empty().format()
             } else {
                 let shown = app.projects.with(|p| p.len().saturating_sub(grid.hidden));
-                res::str::grid_preview_count(grid.hidden as i64, shown as i64).format()
+                res::str::grid_preview_count(res::str::GridPreviewCount {
+                    hidden: grid.hidden as i64,
+                    shown: shown as i64,
+                })
+                .format()
             }
         })
         .font(Font::Footnote)
         .secondary()
         .id("grid-preview-count"),
     ))
-    .spacing(8.0)
+    .spacing(Space::S)
     .align(HAlign::Leading)
     .grow_w()
 }
@@ -518,14 +522,18 @@ fn open_github_page(url: &str) {
 
 // Format on the UI thread when building the menu, not while fetching run metadata.
 fn run_menu_label(run: &model::Run) -> String {
-    let label = res::str::run_label(
-        run.duration.clone(),
-        status_label(run.status),
-        run.title.clone(),
-    )
+    let label = res::str::run_label(res::str::RunLabel {
+        duration: run.duration.clone(),
+        status: status_label(run.status),
+        title: run.title.clone(),
+    })
     .format();
     match run.reruns() {
-        Some(count) if count > 0 => res::str::run_label_reruns(i64::from(count), label).format(),
+        Some(count) if count > 0 => res::str::run_label_reruns(res::str::RunLabelReruns {
+            count: i64::from(count),
+            run: label,
+        })
+        .format(),
         _ => label,
     }
 }
@@ -534,7 +542,7 @@ fn status(app: App) -> StatusItem {
     let projects = model::ordered(app.projects.get(), GRID_ORDER.get());
     let history = usize::try_from(BADGE_HISTORY.get()).unwrap_or(0);
     let mut menu = vec![
-        menu_item(res::str::open_hub().format()).action(ui::show_main),
+        menu_item(res::str::open_hub()).action(ui::show_main),
         menu_item(app.summary()).enabled(false),
         menu_item(app.update_text()).enabled(false),
         menu_separator(),
@@ -546,14 +554,13 @@ fn status(app: App) -> StatusItem {
         }
         group = Some(project.group);
         let url = project.actions_url();
-        let mut runs = vec![
-            menu_item(res::str::open_actions().format()).action(move || open_github_page(&url)),
-        ];
+        let mut runs =
+            vec![menu_item(res::str::open_actions()).action(move || open_github_page(&url))];
         if let Some(error) = &project.error {
             runs.push(menu_item(error_text(error)).enabled(false));
         }
         if project.runs.is_empty() {
-            runs.push(menu_item(res::str::no_runs().format()).enabled(false));
+            runs.push(menu_item(res::str::no_runs()).enabled(false));
         }
         for run in project.runs.iter().take(history) {
             let url = format!("https://github.com{}", run.path);
@@ -567,12 +574,15 @@ fn status(app: App) -> StatusItem {
             .map(|r| light(r.status))
             .collect::<String>();
         menu.push(sub_menu(
-            res::str::repository_label(history, project.repo.clone()).format(),
+            res::str::repository_label(res::str::RepositoryLabel {
+                lights: history,
+                repository: project.repo.clone(),
+            }),
             runs,
         ));
     }
     if projects.is_empty() {
-        menu.push(menu_item(res::str::empty().format()).enabled(false));
+        menu.push(menu_item(res::str::empty()).enabled(false));
     }
     if let Some(hub) = hub::current() {
         menu.push(menu_separator());
@@ -580,7 +590,7 @@ fn status(app: App) -> StatusItem {
     }
     menu.extend([
         menu_separator(),
-        menu_item(res::str::refresh().format())
+        menu_item(res::str::refresh())
             .id("refresh")
             .enabled(
                 app.progress.get().is_none()
@@ -588,35 +598,31 @@ fn status(app: App) -> StatusItem {
                     && app.backoff.get().is_none_or(|at| at <= Instant::now()),
             )
             .action(move || app.refresh(true)),
-        menu_item(res::str::pause().format())
+        menu_item(res::str::pause())
             .id("pause")
             .checked(PAUSED.get())
             .action(|| PAUSED.set(!PAUSED.get_untracked())),
-        menu_item(res::str::settings().format())
-            .id("settings")
-            .action(|| {
-                day_piece_settings::open();
-            }),
+        menu_item(res::str::settings()).id("settings").action(|| {
+            day_piece_settings::open();
+        }),
         menu_separator(),
         menu_role(MenuRole::Quit),
     ]);
     let item = StatusItem::new()
-        .tooltip(res::str::grid_tooltip(app.summary()).format())
+        .tooltip(res::str::grid_tooltip(app.summary()))
         .menu(menu);
     if !GRID_VISIBLE.get() {
-        return item
-            .title(res::str::app_title().format())
-            .tooltip(app.summary());
+        return item.title(res::str::app_title()).tooltip(app.summary());
     }
     let grid = app.grid.get();
     if let Some(image) = grid.image {
         let item = item.raster(image);
         if grid.hidden > 0 {
-            item.title(res::str::grid_overflow(grid.hidden as i64).format())
+            item.title(res::str::grid_overflow(grid.hidden as i64))
         } else {
             item
         }
     } else {
-        item.title(res::str::app_title().format())
+        item.title(res::str::app_title())
     }
 }

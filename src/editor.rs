@@ -116,11 +116,11 @@ pub fn repositories() -> impl Piece {
                         .unwrap_or_else(|| format!("separator-{}", slot.get().id))
                 )
             })
-            .context_menu_fn(move |_| {
+            .context_menu(move || {
                 // Capture identity when the menu opens, before the native cell can recycle.
                 let id = slot.get().id;
                 vec![
-                    menu_item(res::str::remove_row().format())
+                    menu_item(res::str::remove_row())
                         .id("monitor-remove")
                         .action(move || remove(id)),
                 ]
@@ -135,15 +135,17 @@ pub fn repositories() -> impl Piece {
                     .collect()
             })
         })
-        .deletable(true)
-        .delete_label(res::str::remove_row().format())
-        .on_delete(move |index| {
-            if let Some(id) = rows.with(|r| r.get(index).map(|v| v.id)) {
-                remove(id);
-            }
-        })
-        .reorderable(true)
-        .on_reorder(move |from, to| rows.update(|r| move_row(r, from, to)))
+        .deletable(
+            Delete::new(move |index| {
+                if let Some(id) = rows.with(|r| r.get(index).map(|v| v.id)) {
+                    remove(id);
+                }
+            })
+            .label(res::str::remove_row()),
+        )
+        .reorderable(Reorder::new(move |from, to| {
+            rows.update(|r| move_row(r, from, to))
+        }))
         .id("monitor-rows")
         .height(280.0)
         .grow_w(),
