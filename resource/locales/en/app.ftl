@@ -179,7 +179,7 @@ order_recency = Recency
 order_alphabetical = Alphabetical
 remove_selected_row = Remove selected row
 
-# Settings groups and rows (https://daybrite.dev/docs/settings/)
+# Settings groups and rows (https://daybrite.dev/docs/reference/settings)
 settings_refresh = Refresh
 refresh_minutes = Refresh interval (minutes)
 history_count = Recent runs in repository menus

@@ -8,6 +8,9 @@ flow:
   - navigate: { route: settings/general }
   - wait_for: { id: language_picker }
   - nav_back: {}
+  # The absolute group route replaces the remembered path. One Back must reach
+  # the group list, with no retained repository editor beneath General.
+  - assert_missing: { id: monitor_rows }
   - wait_for: { id: prefs_group:general }
   - screenshot: { name: settings }
   - tap: { id: prefs_group:grid }

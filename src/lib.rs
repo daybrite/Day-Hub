@@ -28,7 +28,7 @@ pub fn main_window() -> day::WindowOptions {
 /// The GitHub repository the About links to.
 const SOURCE_URL: &str = "https://github.com/daybrite/Day-Hub";
 
-// Settings (https://daybrite.dev/docs/settings/): typed preferences the monitor reads
+// Settings (https://daybrite.dev/docs/reference/settings): typed preferences the monitor reads
 // reactively. Every write persists and applies at once; there is no draft and no Save button.
 /// Monitored repositories: one `owner/repository` per line, `---` between groups.
 pub static REPOSITORIES: Pref<String> = Pref::new("hub.repositories", String::new);

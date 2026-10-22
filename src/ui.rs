@@ -212,7 +212,7 @@ pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
         })
         .items((
             // Desktop reaches Settings through its menu and window; without a menu bar the
-            // settings page is a sidebar section (https://daybrite.dev/docs/settings/).
+            // settings page is a sidebar section (https://daybrite.dev/docs/reference/settings).
             prefs.nav_item(day_piece_settings::NAV_KEY.to_string()),
             nav_items(
                 move || rows(hub),
