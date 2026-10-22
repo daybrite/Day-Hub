@@ -344,7 +344,7 @@ fn settings(app: App, hub: hub::Hub) -> Prefs {
     // sets the login. Either marks the account as signed in.
     let signed_in = move || hub.api.get().is_some() || !hub.login.get().is_empty();
     Preferences::new()
-        .about(About::from_manifest().link(day::tr("day-about-source"), SOURCE_URL))
+        .about(About::from_manifest().link(res::str::day_about_source(), SOURCE_URL))
         .group(general_group(res::locales::ALL))
         .group(
             Group::new("refresh", res::str::settings_refresh())
