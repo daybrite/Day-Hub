@@ -2,6 +2,7 @@
 //! only in memory and the OS credential store. Never log OAuth payloads or token values.
 use crate::api::Error;
 use day_part_http::{Cache, Client as Http, Redirects, Request};
+use day_part_keychain::{KeychainError, Protection, Secret};
 use oauth2::{
     ClientId, DeviceAuthorizationUrl, Scope, StandardDeviceAuthorizationResponse, TokenResponse,
     TokenUrl, basic::BasicClient,
@@ -20,13 +21,13 @@ pub struct Credential {
 pub fn now() -> u64 {
     crate::clock::unix_seconds()
 }
-fn entry() -> Result<keyring::Entry, Error> {
-    keyring::Entry::new("dev.daybrite.hub.github", "github.com").map_err(|_| Error::Keychain)
-}
+/// The credential's key in the app's keychain; the store scopes items to the app id.
+const KEY: &str = "github";
 pub fn restore() -> Result<Option<Credential>, Error> {
-    match entry()?.get_password() {
+    match day_part_keychain::get(KEY) {
         Ok(secret) => {
-            let token: Credential = serde_json::from_str(&secret).map_err(|_| Error::Keychain)?;
+            let json = secret.as_str().ok_or(Error::Keychain)?;
+            let token: Credential = serde_json::from_str(json).map_err(|_| Error::Keychain)?;
             if token.client_id != crate::hub::CLIENT_ID
                 || token.access_token.is_empty()
                 || token.access_token.chars().any(char::is_whitespace)
@@ -35,18 +36,19 @@ pub fn restore() -> Result<Option<Credential>, Error> {
             }
             Ok(Some(token))
         }
-        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(KeychainError::NotFound) => Ok(None),
         Err(_) => Err(Error::Keychain),
     }
 }
 pub fn save(value: &Credential) -> Result<(), Error> {
-    entry()?
-        .set_password(&serde_json::to_string(value).map_err(|_| Error::Keychain)?)
+    let json = serde_json::to_string(value).map_err(|_| Error::Keychain)?;
+    // `WhenUnlocked`: the monitor reads the token at every launch, and the person is there.
+    day_part_keychain::set(KEY, &Secret::from(json), Protection::WhenUnlocked)
         .map_err(|_| Error::Keychain)
 }
 pub fn forget() -> Result<(), Error> {
-    match entry()?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+    match day_part_keychain::remove(KEY) {
+        Ok(()) | Err(KeychainError::NotFound) => Ok(()),
         Err(_) => Err(Error::Keychain),
     }
 }

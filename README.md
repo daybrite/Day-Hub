@@ -29,8 +29,9 @@ No client secret is embedded or required. Passwords, 2FA and passkeys stay on Gi
 The `oauth2` crate implements device polling, slow-down responses and expiry. Cancel aborts polling;
 a cancelled or superseded attempt cannot publish a session.
 
-Credentials are JSON in the macOS Keychain entry with service `dev.daybrite.hub.github` and account
-`github.com`, accessed using `keyring`. Preferences contain no token. Launch restores the credential;
+Credentials are JSON in the platform's secure store, written through `day-part-keychain` under
+the app id `dev.daybrite.hub` and the key `github`: the keychain on macOS and iOS, the Android
+Keystore, DPAPI on Windows, the Secret Service on Linux. Preferences contain no token. Launch restores the credential;
 sign-out deletes it and clears private repository/run data from memory. Sign-out does not revoke
 GitHub's app grant; **Manage GitHub app access** opens that control. Refresh-token support is included
 when the server issues expiring credentials. Token values and OAuth bodies are never logged.
@@ -144,7 +145,7 @@ References:
 - [GitHub Actions workflow API](https://docs.github.com/en/rest/actions/workflow-runs)
 
 GitHub's official Octokit clients are JavaScript; this native implementation uses maintained Rust
-`oauth2`, `graphql_client`, and `keyring`, with Day's native HTTP transport.
+`oauth2` and `graphql_client`, with Day's native HTTP transport and keychain.
 
 ## Validation
 
