@@ -7,7 +7,7 @@ pub use std::time::Instant;
 pub fn unix_seconds() -> u64 {
     #[cfg(target_arch = "wasm32")]
     {
-        day_dom::now_epoch_ms() / 1000
+        day_toolkit_dom::now_epoch_ms() / 1000
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -34,7 +34,7 @@ mod browser {
             // clock adjustments so elapsed durations never underflow.
             thread_local! { static LAST: Cell<u64> = const { Cell::new(0) }; }
             let millis = LAST.with(|last| {
-                let now = day_dom::now_epoch_ms().max(last.get());
+                let now = day_toolkit_dom::now_epoch_ms().max(last.get());
                 last.set(now);
                 now
             });

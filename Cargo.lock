@@ -317,84 +317,30 @@ checksum = "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
 name = "day"
 version = "0.6.0"
 dependencies = [
- "day-android-runtime",
- "day-appkit",
- "day-arkui",
  "day-core",
- "day-dom",
- "day-fluent",
  "day-geometry",
- "day-gtk",
+ "day-localization-ui",
  "day-macros",
- "day-mdc",
  "day-mock",
  "day-part-clipboard",
- "day-part-prefs",
+ "day-part-preferences",
  "day-piece-settings",
  "day-piece-swiftui",
- "day-piece-texteditor",
+ "day-piece-text-editor",
  "day-pieces",
- "day-qt",
+ "day-platform-android",
  "day-reactive",
  "day-script",
  "day-spec",
- "day-uikit",
- "day-winui",
+ "day-toolkit-appkit",
+ "day-toolkit-arkui",
+ "day-toolkit-dom",
+ "day-toolkit-gtk",
+ "day-toolkit-material",
+ "day-toolkit-qt",
+ "day-toolkit-uikit",
+ "day-toolkit-winui",
  "log",
-]
-
-[[package]]
-name = "day-android-runtime"
-version = "0.6.0"
-dependencies = [
- "day-macros",
- "jni",
- "linkme",
- "log",
-]
-
-[[package]]
-name = "day-appkit"
-version = "0.6.0"
-dependencies = [
- "block2",
- "day-build",
- "day-core",
- "day-fluent",
- "day-l10n",
- "day-pieces",
- "day-reactive",
- "day-spec",
- "dispatch2",
- "linkme",
- "log",
- "objc2",
- "objc2-app-kit",
- "objc2-core-foundation",
- "objc2-core-graphics",
- "objc2-foundation",
- "objc2-quartz-core",
- "objc2-uniform-type-identifiers",
-]
-
-[[package]]
-name = "day-arkui"
-version = "0.6.0"
-dependencies = [
- "day-bridge",
- "day-build",
- "day-core",
- "day-pieces",
- "day-reactive",
- "day-spec",
- "libc",
- "linkme",
- "log",
- "napi-derive-ohos",
- "napi-ohos",
- "ohos-sys",
- "ohos-sys-opaque-types",
- "serde_json",
 ]
 
 [[package]]
@@ -428,7 +374,7 @@ dependencies = [
  "anstyle",
  "day-async",
  "day-geometry",
- "day-l10n",
+ "day-localization",
  "day-macros",
  "day-reactive",
  "day-spec",
@@ -436,34 +382,6 @@ dependencies = [
  "linkme",
  "log",
  "slotmap",
-]
-
-[[package]]
-name = "day-dbus"
-version = "0.6.0"
-
-[[package]]
-name = "day-dom"
-version = "0.6.0"
-dependencies = [
- "day-core",
- "day-geometry",
- "day-l10n",
- "day-pieces",
- "day-reactive",
- "day-spec",
- "getrandom 0.4.3",
- "log",
- "serde_json",
-]
-
-[[package]]
-name = "day-fluent"
-version = "0.6.0"
-dependencies = [
- "day-core",
- "day-l10n",
- "day-pieces",
 ]
 
 [[package]]
@@ -475,31 +393,6 @@ name = "day-geometry"
 version = "0.6.0"
 
 [[package]]
-name = "day-gtk"
-version = "0.6.0"
-dependencies = [
- "cairo-rs",
- "day-core",
- "day-dbus",
- "day-pieces",
- "day-reactive",
- "day-spec",
- "day-windows-runtime",
- "gtk4",
- "libadwaita",
- "libc",
- "linkme",
- "log",
- "objc2",
- "objc2-app-kit",
- "objc2-core-foundation",
- "objc2-core-graphics",
- "objc2-foundation",
- "pangocairo",
- "pkg-config",
-]
-
-[[package]]
 name = "day-hub"
 version = "0.1.0"
 dependencies = [
@@ -507,11 +400,11 @@ dependencies = [
  "chrono",
  "day",
  "day-build",
- "day-dom",
  "day-part-http",
  "day-part-keychain",
  "day-piece-charts",
  "day-piece-settings",
+ "day-toolkit-dom",
  "graphql_client",
  "html5ever",
  "httpdate",
@@ -522,7 +415,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "day-l10n"
+name = "day-localization"
 version = "0.6.0"
 dependencies = [
  "day-reactive",
@@ -541,34 +434,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "day-macos-tabs"
+name = "day-localization-ui"
 version = "0.6.0"
 dependencies = [
  "day-core",
- "day-reactive",
- "day-spec",
- "objc2",
- "objc2-app-kit",
- "objc2-foundation",
+ "day-localization",
+ "day-pieces",
 ]
 
 [[package]]
 name = "day-macros"
 version = "0.6.0"
-
-[[package]]
-name = "day-mdc"
-version = "0.6.0"
-dependencies = [
- "day-android-runtime",
- "day-core",
- "day-pieces",
- "day-reactive",
- "day-spec",
- "jni",
- "linkme",
- "log",
-]
 
 [[package]]
 name = "day-mock"
@@ -583,10 +459,10 @@ name = "day-part-biometrics"
 version = "0.6.0"
 dependencies = [
  "block2",
- "day-android-runtime",
  "day-async",
  "day-bridge",
  "day-build",
+ "day-platform-android",
  "objc2",
  "objc2-foundation",
  "windows",
@@ -598,10 +474,10 @@ name = "day-part-clipboard"
 version = "0.6.0"
 dependencies = [
  "base64 0.23.1",
- "day-android-runtime",
  "day-async",
  "day-bridge",
  "day-build",
+ "day-platform-android",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
@@ -613,10 +489,10 @@ name = "day-part-http"
 version = "0.6.0"
 dependencies = [
  "block2",
- "day-android-runtime",
  "day-async",
  "day-bridge",
  "day-build",
+ "day-platform-android",
  "httpdate",
  "libc",
  "md-5",
@@ -633,11 +509,11 @@ dependencies = [
 name = "day-part-keychain"
 version = "0.6.0"
 dependencies = [
- "day-android-runtime",
  "day-async",
  "day-bridge",
  "day-build",
  "day-part-biometrics",
+ "day-platform-android",
  "objc2",
  "objc2-core-foundation",
  "objc2-foundation",
@@ -646,13 +522,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "day-part-prefs"
+name = "day-part-preferences"
 version = "0.6.0"
 dependencies = [
- "day-android-runtime",
  "day-bridge",
  "day-build",
  "day-core",
+ "day-platform-android",
  "day-reactive",
  "log",
  "objc2",
@@ -665,7 +541,7 @@ version = "0.4.2"
 dependencies = [
  "day-core",
  "day-geometry",
- "day-l10n",
+ "day-localization",
  "day-pieces",
  "day-reactive",
  "day-spec",
@@ -676,25 +552,25 @@ name = "day-piece-settings"
 version = "0.6.0"
 dependencies = [
  "cc",
- "day-android-runtime",
- "day-appkit",
- "day-arkui",
  "day-build",
  "day-core",
- "day-fluent",
- "day-gtk",
- "day-l10n",
- "day-mdc",
+ "day-localization",
+ "day-localization-ui",
  "day-part-clipboard",
- "day-part-prefs",
+ "day-part-preferences",
  "day-pieces",
- "day-qt",
+ "day-platform-android",
  "day-reactive",
  "day-spec",
  "day-toolchain",
- "day-uikit",
- "day-winui",
- "day-xaml-sys",
+ "day-toolkit-appkit",
+ "day-toolkit-arkui",
+ "day-toolkit-gtk",
+ "day-toolkit-material",
+ "day-toolkit-qt",
+ "day-toolkit-uikit",
+ "day-toolkit-winui",
+ "day-toolkit-xaml-sys",
  "gtk4",
  "libadwaita",
  "linkme",
@@ -710,12 +586,12 @@ dependencies = [
 name = "day-piece-swiftui"
 version = "0.6.0"
 dependencies = [
- "day-appkit",
  "day-core",
  "day-pieces",
  "day-reactive",
  "day-spec",
- "day-uikit",
+ "day-toolkit-appkit",
+ "day-toolkit-uikit",
  "linkme",
  "objc2",
  "objc2-app-kit",
@@ -724,25 +600,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "day-piece-texteditor"
+name = "day-piece-text-editor"
 version = "0.6.0"
 dependencies = [
  "cc",
- "day-android-runtime",
- "day-appkit",
- "day-arkui",
  "day-core",
- "day-dom",
- "day-gtk",
- "day-mdc",
  "day-pieces",
- "day-qt",
+ "day-platform-android",
  "day-reactive",
  "day-spec",
  "day-toolchain",
- "day-uikit",
- "day-winui",
- "day-xaml-sys",
+ "day-toolkit-appkit",
+ "day-toolkit-arkui",
+ "day-toolkit-dom",
+ "day-toolkit-gtk",
+ "day-toolkit-material",
+ "day-toolkit-qt",
+ "day-toolkit-uikit",
+ "day-toolkit-winui",
+ "day-toolkit-xaml-sys",
  "gtk4",
  "linkme",
  "log",
@@ -759,7 +635,7 @@ version = "0.6.0"
 dependencies = [
  "day-core",
  "day-geometry",
- "day-l10n",
+ "day-localization",
  "day-macros",
  "day-reactive",
  "day-spec",
@@ -770,26 +646,36 @@ dependencies = [
 ]
 
 [[package]]
-name = "day-qt"
+name = "day-platform-android"
 version = "0.6.0"
 dependencies = [
- "day-core",
- "day-dbus",
- "day-macos-tabs",
- "day-pieces",
- "day-qt-sys",
- "day-reactive",
- "day-spec",
- "day-windows-runtime",
+ "day-macros",
+ "jni",
  "linkme",
  "log",
 ]
 
 [[package]]
-name = "day-qt-sys"
+name = "day-platform-linux"
+version = "0.6.0"
+
+[[package]]
+name = "day-platform-macos"
 version = "0.6.0"
 dependencies = [
- "cc",
+ "day-core",
+ "day-reactive",
+ "day-spec",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+]
+
+[[package]]
+name = "day-platform-windows"
+version = "0.6.0"
+dependencies = [
+ "windows",
 ]
 
 [[package]]
@@ -805,9 +691,9 @@ name = "day-script"
 version = "0.6.0"
 dependencies = [
  "day-core",
- "day-fluent",
+ "day-localization-ui",
  "day-reactive",
- "day-script-proto",
+ "day-script-protocol",
  "day-spec",
  "log",
  "serde",
@@ -815,7 +701,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "day-script-proto"
+name = "day-script-protocol"
 version = "0.6.0"
 dependencies = [
  "serde",
@@ -838,7 +724,128 @@ name = "day-toolchain"
 version = "0.6.0"
 
 [[package]]
-name = "day-uikit"
+name = "day-toolkit-appkit"
+version = "0.6.0"
+dependencies = [
+ "block2",
+ "day-build",
+ "day-core",
+ "day-localization",
+ "day-localization-ui",
+ "day-pieces",
+ "day-reactive",
+ "day-spec",
+ "dispatch2",
+ "linkme",
+ "log",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-foundation",
+ "objc2-quartz-core",
+ "objc2-uniform-type-identifiers",
+]
+
+[[package]]
+name = "day-toolkit-arkui"
+version = "0.6.0"
+dependencies = [
+ "day-bridge",
+ "day-build",
+ "day-core",
+ "day-pieces",
+ "day-reactive",
+ "day-spec",
+ "libc",
+ "linkme",
+ "log",
+ "napi-derive-ohos",
+ "napi-ohos",
+ "ohos-sys",
+ "ohos-sys-opaque-types",
+ "serde_json",
+]
+
+[[package]]
+name = "day-toolkit-dom"
+version = "0.6.0"
+dependencies = [
+ "day-core",
+ "day-geometry",
+ "day-localization",
+ "day-pieces",
+ "day-reactive",
+ "day-spec",
+ "getrandom 0.4.3",
+ "log",
+ "serde_json",
+]
+
+[[package]]
+name = "day-toolkit-gtk"
+version = "0.6.0"
+dependencies = [
+ "cairo-rs",
+ "day-core",
+ "day-pieces",
+ "day-platform-linux",
+ "day-platform-windows",
+ "day-reactive",
+ "day-spec",
+ "gtk4",
+ "libadwaita",
+ "libc",
+ "linkme",
+ "log",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-foundation",
+ "pangocairo",
+ "pkg-config",
+]
+
+[[package]]
+name = "day-toolkit-material"
+version = "0.6.0"
+dependencies = [
+ "day-core",
+ "day-pieces",
+ "day-platform-android",
+ "day-reactive",
+ "day-spec",
+ "jni",
+ "linkme",
+ "log",
+]
+
+[[package]]
+name = "day-toolkit-qt"
+version = "0.6.0"
+dependencies = [
+ "day-core",
+ "day-pieces",
+ "day-platform-linux",
+ "day-platform-macos",
+ "day-platform-windows",
+ "day-reactive",
+ "day-spec",
+ "day-toolkit-qt-sys",
+ "linkme",
+ "log",
+]
+
+[[package]]
+name = "day-toolkit-qt-sys"
+version = "0.6.0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "day-toolkit-uikit"
 version = "0.6.0"
 dependencies = [
  "block2",
@@ -858,29 +865,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "day-windows-runtime"
-version = "0.6.0"
-dependencies = [
- "windows",
-]
-
-[[package]]
-name = "day-winui"
+name = "day-toolkit-winui"
 version = "0.6.0"
 dependencies = [
  "day-core",
- "day-l10n",
+ "day-localization",
  "day-pieces",
+ "day-platform-windows",
  "day-reactive",
  "day-spec",
- "day-windows-runtime",
- "day-xaml-sys",
+ "day-toolkit-xaml-sys",
  "linkme",
  "log",
 ]
 
 [[package]]
-name = "day-xaml-sys"
+name = "day-toolkit-xaml-sys"
 version = "0.6.0"
 dependencies = [
  "cc",
@@ -3789,7 +3789,71 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
 
 [[patch.unused]]
+name = "day-persistence"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-persistence-macros"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-sqlite-worker"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-piece-self-update"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-self-update-core"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-selfupdate-tools"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-sketch"
+version = "0.1.3"
+
+[[patch.unused]]
+name = "day-rise"
+version = "0.5.0"
+
+[[patch.unused]]
+name = "day-piece-camera"
+version = "0.1.0"
+
+[[patch.unused]]
 name = "day-piece-charts-gallery"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-brew"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-part-speech"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-lexicon"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-piece-crash-reporter"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-trader"
+version = "0.1.7"
+
+[[patch.unused]]
+name = "day-godot"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-godot-demo"
 version = "0.1.0"
 
 [[patch.unused]]
@@ -3821,7 +3885,7 @@ name = "day-part-downloads"
 version = "0.6.0"
 
 [[patch.unused]]
-name = "day-part-fs"
+name = "day-part-filesystem"
 version = "0.6.0"
 
 [[patch.unused]]
@@ -3857,7 +3921,7 @@ name = "day-tweak-button-bezel"
 version = "0.6.0"
 
 [[patch.unused]]
-name = "day-tweak-slider-tickmarks"
+name = "day-tweak-slider-tick-marks"
 version = "0.6.0"
 
 [[patch.unused]]
@@ -3871,3 +3935,67 @@ version = "0.6.0"
 [[patch.unused]]
 name = "day-vector"
 version = "0.6.0"
+
+[[patch.unused]]
+name = "day-lite"
+version = "0.4.3"
+
+[[patch.unused]]
+name = "day-piece-media"
+version = "0.4.3"
+
+[[patch.unused]]
+name = "day-part-auth"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-part-zeroconf"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-orbit"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-showcase"
+version = "0.5.0"
+
+[[patch.unused]]
+name = "day-news"
+version = "0.2.1"
+
+[[patch.unused]]
+name = "day-skies"
+version = "0.1.7"
+
+[[patch.unused]]
+name = "day-tunes"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "day-plugin-tools"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-plugins"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-plugins-lab"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-piece-lottie"
+version = "0.4.3"
+
+[[patch.unused]]
+name = "day-piece-lottie-gallery"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "day-piece-webview"
+version = "0.4.3"
+
+[[patch.unused]]
+name = "day-piece-webview-servo"
+version = "0.4.3"
