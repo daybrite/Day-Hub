@@ -190,3 +190,6 @@ monitored_count = { $count ->
     }
 account_user = GitHub user
 not_signed_in = Not signed in
+
+# The system credential store may request authentication before releasing saved credentials.
+permission_biometrics = Unlock the GitHub account credentials kept in the keychain.
