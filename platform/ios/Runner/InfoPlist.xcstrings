@@ -1,5 +1,17 @@
 {
   "sourceLanguage": "en",
-  "strings": {},
+  "strings": {
+    "NSFaceIDUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock the GitHub account credentials kept in the keychain."
+          }
+        }
+      }
+    }
+  },
   "version": "1.0"
 }

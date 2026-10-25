@@ -151,7 +151,7 @@ GitHub's official Octokit clients are JavaScript; this native implementation use
 
 CI resolves dependencies from Git, without the machine-local `.cargo/config.toml` patches.
 Keep the committed `Cargo.lock` Git-resolved: local patched builds remove the Day and charts
-Git sources from it, which breaks CI's `cargo update -p day --precise ...` step. When refreshing
+Git sources from it, which breaks CI's `cargo update -p day-core --precise ...` step. When refreshing
 the lockfile, use a clean checkout without local patches and verify `cargo metadata --locked`.
 
 The workflow runs four synthetic-account scripts with `DAY_HUB_FIXTURE=1`: `hub`, `hidden`,

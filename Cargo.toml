@@ -21,7 +21,7 @@ arkui = ["day/arkui"]
 dom = ["day/dom"]
 
 [dependencies]
-day = { git = "https://github.com/daybrite/day.git" }
+day = { package = "day-app", git = "https://github.com/daybrite/day.git" }
 day-part-http = { git = "https://github.com/daybrite/day.git" }
 day-part-keychain = { git = "https://github.com/daybrite/day.git" }
 day-piece-settings = { git = "https://github.com/daybrite/day.git" }
