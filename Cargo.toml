@@ -21,12 +21,12 @@ arkui = ["day/arkui"]
 dom = ["day/dom"]
 
 [dependencies]
-day = { package = "day-app", git = "https://github.com/daybrite/day.git" }
-day-part-http = { git = "https://github.com/daybrite/day.git" }
-day-part-keychain = { git = "https://github.com/daybrite/day.git" }
-day-piece-settings = { git = "https://github.com/daybrite/day.git" }
+day = { package = "day-app", version = "0.6" }
+day-part-http = "0.6"
+day-part-keychain = "0.6"
+day-piece-settings = "0.6"
 html5ever = "0.39"
-day-piece-charts = { git = "https://github.com/daybrite/day-piece-charts.git" }
+day-piece-charts = "0.4"
 oauth2 = { version = "5", default-features = false }
 graphql_client = { version = "0.16", default-features = false }
 serde = { version = "1", features = ["derive"] }
@@ -37,9 +37,9 @@ url = "2"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-day-toolkit-dom = { git = "https://github.com/daybrite/day.git" }
+day-toolkit-dom = "0.6"
 
 [build-dependencies]
-day-build = { git = "https://github.com/daybrite/day.git" }
+day-build = "0.6"
 
 [workspace]

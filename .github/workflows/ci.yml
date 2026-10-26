@@ -8,6 +8,11 @@ on:
   release:
     types: [released]
   workflow_dispatch:
+    inputs:
+      day-main:
+        description: Build against day's main branch instead of the newest release
+        type: boolean
+        default: false
   schedule:
     - cron: "30 19 * * *" # daily (UTC)
 
@@ -27,7 +32,7 @@ jobs:
     secrets: inherit
     with:
       targets: windows-winui, macos-appkit, linux-gtk, linux-qt, ios-uikit, android-material, harmony-arkui, web-dom
-      update-day-deps: true
+      day-deps: ${{ inputs.day-main && 'main' || 'auto' }}
       # Repository routes come from nav.items() at runtime. The static route linter
       # only knows literal nav.item() keys; the fixture scripts exercise these routes.
       lint: false
