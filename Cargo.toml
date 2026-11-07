@@ -21,12 +21,12 @@ arkui = ["day/arkui"]
 dom = ["day/dom"]
 
 [dependencies]
-day = { package = "day-app", version = "0.6" }
-day-part-http = "0.6"
-day-part-keychain = "0.6"
-day-piece-settings = "0.6"
+day = { package = "day-app", version = "0.*" }
+day-part-http = "0.*"
+day-part-keychain = "0.*"
+day-piece-settings = "0.*"
 html5ever = "0.39"
-day-piece-charts = "0.4"
+day-piece-charts = "0.*"
 oauth2 = { version = "5", default-features = false }
 graphql_client = { version = "0.16", default-features = false }
 serde = { version = "1", features = ["derive"] }
@@ -37,9 +37,9 @@ url = "2"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-day-toolkit-dom = "0.6"
+day-toolkit-dom = "0.*"
 
 [build-dependencies]
-day-build = "0.6"
+day-build = "0.*"
 
 [workspace]
