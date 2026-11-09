@@ -263,7 +263,7 @@ pub fn window(hub: Hub, prefs: Prefs) -> impl Piece {
                     ],
                 )
                 .id(day::id!(repository_sort))
-                .grow_w(),
+                .grow(Dimension::Width),
                 labeled(res::str::show_archived(), toggle(hub.archived)),
                 label(move || {
                     res::str::sidebar_repository_count(res::str::SidebarRepositoryCount {
@@ -399,7 +399,7 @@ fn account(hub: Hub) -> impl Piece {
         .spacing(20.0)
         .padding(28.0),
     )
-    .grow()
+    .grow(Dimension::Both)
 }
 fn repository_page(hub: Hub, name: String) -> AnyPiece {
     let Some(repo) = hub.repository(&name) else {
@@ -465,11 +465,11 @@ fn repository_page(hub: Hub, name: String) -> AnyPiece {
                 actions(hub, actions_name.clone())
             })
             .id(day::id!(repository_tabs))
-            .grow(),
+            .grow(Dimension::Both),
     ))
     .spacing(Space::M)
     .padding(20.0)
-    .grow()
+    .grow(Dimension::Both)
     .any()
 }
 fn detail(hub: Hub, name: String) -> day::reactive::Memo<Detail> {
@@ -495,7 +495,7 @@ fn overview(hub: Hub, name: String) -> impl Piece {
             .collect()
     })
     .height(220.0)
-    .grow_w()
+    .grow(Dimension::Width)
     .id(day::id!(language_chart));
     let commits = chart(move || {
         let mut days: BTreeMap<String, u64> = BTreeMap::new();
@@ -520,7 +520,7 @@ fn overview(hub: Hub, name: String) -> impl Piece {
             .collect()
     })
     .height(230.0)
-    .grow_w()
+    .grow(Dimension::Width)
     .id(day::id!(commit_chart));
     scroll(
         column((
@@ -575,7 +575,7 @@ fn overview(hub: Hub, name: String) -> impl Piece {
         .spacing(14.0)
         .padding(Space::M),
     )
-    .grow()
+    .grow(Dimension::Both)
 }
 fn actions(hub: Hub, name: String) -> impl Piece {
     let data = detail(hub, name.clone());
@@ -599,7 +599,7 @@ fn actions(hub: Hub, name: String) -> impl Piece {
             .collect()
     })
     .height(170.0)
-    .grow_w()
+    .grow(Dimension::Width)
     .id(day::id!(run_chart));
     scroll(
         column((
@@ -806,7 +806,7 @@ fn actions(hub: Hub, name: String) -> impl Piece {
         .spacing(Space::M)
         .padding(Space::M),
     )
-    .grow()
+    .grow(Dimension::Both)
 }
 #[cfg(test)]
 mod tests {

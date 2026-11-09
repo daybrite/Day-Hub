@@ -102,11 +102,17 @@ pub fn repositories() -> impl Piece {
         list(items(move || rows.get(), |r: &Entry| r.id), move |slot| {
             when(
                 move || slot.get().repository.is_some(),
-                move || label(move || slot.get().repository.unwrap_or_default()).grow_w(),
+                move || {
+                    label(move || slot.get().repository.unwrap_or_default()).grow(Dimension::Width)
+                },
             )
-            .otherwise(|| divider().grow_w().a11y(|a| a.label(res::str::separator())))
+            .otherwise(|| {
+                divider()
+                    .grow(Dimension::Width)
+                    .a11y(|a| a.label(res::str::separator()))
+            })
             .padding(10.0)
-            .grow_w()
+            .grow(Dimension::Width)
             .id_of(move || {
                 day::id!(
                     monitor_row,
@@ -148,14 +154,14 @@ pub fn repositories() -> impl Piece {
         }))
         .id(day::id!(monitor_rows))
         .height(280.0)
-        .grow_w(),
+        .grow(Dimension::Width),
         label(move || res::str::editor_count(rows.with(|r| r.len()) as i64).format())
             .id(day::id!(monitor_row_count)),
         row((
             text_field(input)
                 .placeholder(res::str::repository_address())
                 .id(day::id!(monitor_input))
-                .grow_w(),
+                .grow(Dimension::Width),
             button(res::str::add_repository())
                 .id(day::id!(monitor_add))
                 .action(move || add(input.get())),
@@ -208,7 +214,7 @@ pub fn repositories() -> impl Piece {
             ),
             move |slot| {
                 row((
-                    label(move || slot.get().full_name).grow_w(),
+                    label(move || slot.get().full_name).grow(Dimension::Width),
                     button(res::str::add_repository())
                         .id_of(move || day::id!(known_add, slot.get().id))
                         .action(move || add(slot.get().full_name)),
@@ -217,7 +223,7 @@ pub fn repositories() -> impl Piece {
             },
         )
         .height(180.0)
-        .grow_w()
+        .grow(Dimension::Width)
         .id(day::id!(known_repositories)),
     ))
     .spacing(10.0)

@@ -458,7 +458,7 @@ fn grid_preview(app: App) -> impl Piece {
     column((
         canvas(move |draw, size| app.grid.with(|grid| grid.draw(draw, size)))
             .height(24.0)
-            .grow_w()
+            .grow(Dimension::Width)
             .id(day::id!(grid_preview))
             .a11y(|a| a.label(res::str::grid_preview())),
         label(move || {
@@ -480,7 +480,7 @@ fn grid_preview(app: App) -> impl Piece {
     ))
     .spacing(Space::S)
     .align(HAlign::Leading)
-    .grow_w()
+    .grow(Dimension::Width)
 }
 
 fn status_label(status: Status) -> String {

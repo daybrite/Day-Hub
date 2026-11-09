@@ -77,21 +77,21 @@ fn main() {
                 label(res::str::grid_preview()),
                 canvas(move |d, size| standard.draw(d, size))
                     .height(32.0)
-                    .grow_w(),
+                    .grow(Dimension::Width),
                 label(res::str::grid_preview_count(res::str::GridPreviewCount {
                     hidden: 0,
                     shown: 70,
                 })),
                 canvas(move |d, size| compact.draw(d, size))
                     .height(32.0)
-                    .grow_w(),
+                    .grow(Dimension::Width),
                 label(res::str::grid_preview_count(res::str::GridPreviewCount {
                     hidden: 0,
                     shown: 70,
                 })),
                 canvas(move |d, size| bounded.draw(d, size))
                     .height(32.0)
-                    .grow_w(),
+                    .grow(Dimension::Width),
                 label(res::str::grid_preview_count(res::str::GridPreviewCount {
                     hidden: 57,
                     shown: 13,
